@@ -201,7 +201,15 @@ async function handleInbound(
 ): Promise<void> {
   const chatId = p.from ?? "";
   if (chatId.endsWith("@g.us")) return;
+  // WhatsApp Multi-device usa @lid (Linked Identity) como pseudonymous ID
+  // pra preservar privacidade. Não é phone E.164. Sem WAHA contact-resolve
+  // (que requer chamada extra), não conseguimos criar um contato útil.
+  // Skip por enquanto — quando a pessoa responder no @c.us regular, criamos.
+  if (chatId.endsWith("@lid")) return;
   if (!p.id || !chatId) return;
+  // Skip eventos sem conteúdo (WAHA emite muitos message events vazios pra
+  // status updates, leituras, etc). Inbound real tem body OU media.
+  if (!p.body && !p.mediaUrl && !p.hasMedia) return;
 
   const phone = "+" + chatId.replace(/@.*$/, "").replace(/^\+/, "");
 
@@ -339,9 +347,15 @@ async function handleOutboundFromUserPhone(
   p: WahaPayload,
   requestId: string,
 ): Promise<void> {
-  const chatId = p.to ?? p.from ?? "";
-  if (chatId.endsWith("@g.us")) return;
-  if (!p.id || !chatId) return;
+  // For outbound (fromMe=true), recipient is in `to`. WAHA Multi-device
+  // returns destinatário com `@lid` quando o destinatário ainda não está
+  // nos contatos do remetente — sem phone E.164, não conseguimos linkar
+  // a um contact válido. Skip por enquanto (mensagem ainda é registrada
+  // no webhook_events_log pra replay futuro quando resolvermos LID→phone).
+  const chatId = p.to ?? "";
+  if (!chatId || chatId.endsWith("@g.us") || chatId.endsWith("@lid")) return;
+  if (!p.id) return;
+  if (!p.body && !p.mediaUrl && !p.hasMedia) return;
 
   const phone = "+" + chatId.replace(/@.*$/, "").replace(/^\+/, "");
 
