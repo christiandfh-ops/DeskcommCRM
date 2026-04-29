@@ -5,6 +5,7 @@ import { requirePlatformAdmin } from "@/lib/auth/requirePlatformAdmin";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CaretLeft } from "@/lib/ui/icons";
+import { TabNav } from "./_tab-nav";
 
 // ---------------------------------------------------------------------------
 // Status badge helpers (same palette as TenantsTable)
@@ -39,7 +40,7 @@ interface TabItem {
 
 const TABS: TabItem[] = [
   { label: "Visão Geral", href: "", disabled: false },
-  { label: "Saúde", href: "/health", disabled: true },
+  { label: "Saúde", href: "/health", disabled: false },
   { label: "Equipe", href: "/team", disabled: true },
   { label: "Uso", href: "/usage", disabled: true },
 ];
@@ -104,36 +105,7 @@ export default async function TenantDetailLayout({
       </div>
 
       {/* Sub-nav */}
-      <div className="flex gap-0 border-b">
-        {TABS.map((tab) => {
-          const href = basePath + tab.href;
-          const isOverview = tab.href === "";
-          return (
-            <Link
-              key={tab.label}
-              href={tab.disabled ? "#" : href}
-              aria-disabled={tab.disabled}
-              className={[
-                "px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
-                tab.disabled
-                  ? "cursor-not-allowed text-muted-foreground/40 border-transparent"
-                  : isOverview
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/40",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            >
-              {tab.label}
-              {tab.disabled && (
-                <span className="ml-1.5 text-[10px] font-normal opacity-60">
-                  em breve
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </div>
+      <TabNav basePath={basePath} tabs={TABS} />
 
       <Separator className="hidden" />
 

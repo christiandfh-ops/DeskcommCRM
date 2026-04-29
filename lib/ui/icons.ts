@@ -26,6 +26,11 @@ export {
   Gauge,
   WifiSlash,
   Clock,
+  // health dashboard
+  WifiHigh,
+  Brain,
+  ArrowsClockwise,
+  Dot,
   // actions
   PaperPlaneTilt,
   Check,
