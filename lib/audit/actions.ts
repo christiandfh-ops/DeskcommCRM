@@ -55,4 +55,6 @@ export type AuditAction =
   | "message.received"
   | "contact.blocked"
   | "ai.handoff_triggered"
-  | "ai.reactivated_by_agent";
+  | "ai.reactivated_by_agent"
+  | "conversation.usable_for_rag_toggled"
+  | "rag.conversations_batch_run";

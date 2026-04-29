@@ -33,6 +33,8 @@ const schema = z.object({
 
   // Cron / interno
   INTERNAL_SECRET: required("INTERNAL_SECRET"),
+  /** Optional dedicated secret for cron endpoints (S-06.07 onwards). */
+  INTERNAL_CRON_SECRET: z.string().optional().default(""),
 
   // Encryption keys (pgcrypto)
   CPF_ENCRYPTION_KEY: required("CPF_ENCRYPTION_KEY"),
