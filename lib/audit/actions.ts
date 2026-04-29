@@ -74,4 +74,6 @@ export type AuditAction =
   | "lgpd.manually_approved"
   | "webhook.hmac_invalid"
   | "lgpd.sla_alarm_triggered"
-  | "lgpd.sla_watcher_run";
+  | "lgpd.sla_watcher_run"
+  | "platform_admin.inbox_listed"
+  | "platform_admin.conversation_viewed";
