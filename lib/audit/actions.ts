@@ -85,4 +85,6 @@ export type AuditAction =
   | "platform_admin.impersonate_ended"
   | "platform_admin.impersonate_misconfigured"
   | "tenant.suspended"
-  | "tenant.reactivated";
+  | "tenant.reactivated"
+  | "platform_admin.audit_listed"
+  | "platform_admin.audit_entry_viewed";
