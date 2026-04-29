@@ -46,4 +46,11 @@ export type AuditAction =
   | "onboarding.ai_configured"
   | "onboarding.team_invited"
   | "onboarding.completed"
-  | "tenant.onboarded";
+  | "tenant.onboarded"
+  | "conversation.created"
+  | "conversation.claimed"
+  | "conversation.released"
+  | "conversation.closed"
+  | "message.sent"
+  | "message.received"
+  | "contact.blocked";
