@@ -49,6 +49,9 @@ supabase/.branches/
 # Epic executor (skill artifacts)
 .epic-executor/
 
+# Claude Code harness artifacts (scheduled tasks lock, etc)
+.claude/
+
 # Local docker volumes (WAHA)
 .waha-data/
 .epic-executor/
