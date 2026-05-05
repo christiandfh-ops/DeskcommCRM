@@ -20,7 +20,7 @@ Esse documento extrai apenas as decisões e padrões da referência que o Deskco
 | Storage | Supabase Storage (bucket `whatsapp-media` privado, URLs assinadas) |
 | WhatsApp | WAHA Plus (multi-tenant); engine NOWEB |
 | Hospedagem app | Vercel |
-| Hospedagem WAHA | Railway (MVP) → VPS Hetzner (produção) |
+| Hospedagem WAHA | Railway (MVP) → VPS Hostgator (produção) |
 | Validação | Zod em todo input |
 | Rate limit | Upstash Redis (sliding window) com fallback in-memory |
 | Cron | Vercel Cron |

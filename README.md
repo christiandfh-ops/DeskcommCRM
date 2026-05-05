@@ -82,7 +82,7 @@ App: <http://localhost:3000> · Health check: <http://localhost:3000/api/v1/heal
 | **AI** | Vercel AI Gateway (Anthropic primário, OpenAI embeddings) | Fallback automático, ZDR |
 | **Validação** | Zod | Input externo, env, payloads |
 | **Observability** | Sentry (com `beforeSend` sanitizado) | Sem PII no breadcrumb |
-| **Hospedagem** | Vercel (app) + Hetzner VPS (WAHA) | Edge + dedicado pra WhatsApp |
+| **Hospedagem** | Vercel (app) + Hostgator VPS Turing/SP (WAHA) | Edge + dedicado pra WhatsApp; datacenter Brasil |
 
 Detalhes: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
@@ -146,6 +146,7 @@ Documentação completa de keyboard shortcuts vem com EPIC-04 (kanban) e EPIC-03
 | [`docs/business-rules/`](docs/business-rules/) | Regras de negócio fora do código |
 | [`docs/stories/epics/MASTER.md`](docs/stories/epics/MASTER.md) | Plano de execução wave-by-wave |
 | [`docs/DEPLOY-CHECKLIST.md`](docs/DEPLOY-CHECKLIST.md) | Preflight pré-go-live |
+| [`docs/runbooks/waha-hostgator.md`](docs/runbooks/waha-hostgator.md) | Runbook completo de WAHA em produção (VPS Hostgator) |
 
 ---
 

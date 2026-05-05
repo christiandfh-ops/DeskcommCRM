@@ -50,7 +50,7 @@ graph TD
 
 ## 2. C4 Level 2 — Container Diagram
 
-Decomposição do DeskcommCRM em containers de runtime. O Next.js App é o monolito hospedado na Vercel; Supabase entrega Postgres, Realtime e Storage gerenciados; Upstash provê Redis para rate-limit; WAHA Plus roda em VPS Hetzner próprio (Docker); o MCP server é projeto separado entrando na Fase 2. A linha pontilhada para o MCP marca componentes ainda não construídos no MVP.
+Decomposição do DeskcommCRM em containers de runtime. O Next.js App é o monolito hospedado na Vercel; Supabase entrega Postgres, Realtime e Storage gerenciados; Upstash provê Redis para rate-limit; WAHA Plus roda em VPS Hostgator próprio (Docker); o MCP server é projeto separado entrando na Fase 2. A linha pontilhada para o MCP marca componentes ainda não construídos no MVP.
 
 ```mermaid
 graph TB
@@ -70,7 +70,7 @@ graph TB
         Redis[(Redis<br/>sliding-window rate limit<br/>idempotency cache)]
     end
 
-    subgraph HetznerVPS
+    subgraph HostgatorVPS
         Nginx[Nginx<br/>proxy_buffering off]
         WAHA[WAHA Plus<br/>engine NOWEB<br/>N sessões]
     end
@@ -610,7 +610,7 @@ sequenceDiagram
 
 ## 10. Deployment Diagram
 
-Topologia física de produção. Vercel hospeda o Next.js (Edge + serverless), Supabase entrega os 3 serviços gerenciados, Upstash o Redis, Hetzner VPS roda WAHA atrás de Nginx. AI Gateway é proxy interno da Vercel para Anthropic e OpenAI. Sentry recebe telemetria do Next.js e do host WAHA. Conexões críticas: Realtime via WebSocket persistente, webhooks WAHA via HTTPS, AI calls via HTTPS com observability nativa.
+Topologia física de produção. Vercel hospeda o Next.js (Edge + serverless), Supabase entrega os 3 serviços gerenciados, Upstash o Redis, Hostgator VPS roda WAHA atrás de Nginx. AI Gateway é proxy interno da Vercel para Anthropic e OpenAI. Sentry recebe telemetria do Next.js e do host WAHA. Conexões críticas: Realtime via WebSocket persistente, webhooks WAHA via HTTPS, AI calls via HTTPS com observability nativa.
 
 ```mermaid
 graph LR
@@ -629,7 +629,7 @@ graph LR
 
     NS[Nuvemshop API]
 
-    subgraph Hetzner[Hetzner VPS]
+    subgraph Hostgator[Hostgator VPS]
         Nginx[Nginx<br/>TLS + buffering off]
         WAHA[WAHA Plus<br/>Docker NOWEB]
     end

@@ -146,7 +146,7 @@ Tudo decidido durante a sessão autônoma está documentado em:
 | Realtime | Supabase Realtime (postgres_changes) | gratuito até 200 conn |
 | WhatsApp | WAHA Plus + engine NOWEB | multi-tenant + estável |
 | Hospedagem app | Vercel | deploy git-push |
-| Hospedagem WAHA | Hetzner VPS (~$10/mês) + Nginx + Let's Encrypt | custo/perf |
+| Hospedagem WAHA | Hostgator VPS Turing (~R$140/mês, datacenter SP) + Nginx + Let's Encrypt | parceria comercial + latência baixa pro WhatsApp BR |
 | Cache/rate | Upstash Redis | sliding window |
 | Filas | pg_boss (MVP) → Inngest se volume justificar | Postgres-only no início |
 | AI | Vercel AI Gateway (Sonnet 4.6 produção, Haiku 4.5 sentiment) | provider failover, observability |

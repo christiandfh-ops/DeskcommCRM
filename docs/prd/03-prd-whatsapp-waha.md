@@ -41,7 +41,7 @@ A janela de 24h da Meta (envio proativo só com template aprovado fora da janela
 8. **Multi-número por tenant** (1-2 números no MVP-B), com health check próprio
 9. **Multi-atendente**: assinar `message.any` pra capturar mensagens enviadas por outros devices vinculados; tratamento de `fromMe=true`
 10. **Crons obrigatórios**: `sync-sessions`, `recover-stuck-messages`, `process-pending-webhooks`
-11. **Hospedagem WAHA** (Railway no MVP, VPS Hetzner em produção; BYO documentado como Fase 2)
+11. **Hospedagem WAHA** (Railway no MVP, VPS Hostgator em produção; BYO documentado como Fase 2)
 12. Tratamento de **edge cases** críticos (sessão cai, QR expira, número banido, mensagem fora de ordem, mensagem duplicada, mídia grande, áudio Safari, texto >4096, grupos)
 
 ### Fora do escopo deste sub-PRD (referências cruzadas)
@@ -312,7 +312,7 @@ A janela de 24h da Meta (envio proativo só com template aprovado fora da janela
 - Idempotência forte de inbound: zero duplicatas observáveis em 30 dias de operação
 - Recovery automático de sessão `STOPPED` por crash WAHA: <5min via cron
 - Zero perda de mensagem: toda inbound vai pra `webhook_events_log` raw antes de qualquer processamento
-- SLA WAHA upstream: 99% (Railway/Hetzner não dão SLA forte; aceito como tradeoff)
+- SLA WAHA upstream: 99% (Railway/Hostgator não dão SLA forte; aceito como tradeoff)
 
 ### 4.3 Segurança
 - `WAHA_API_KEY` plaintext armazenada apenas em Vercel Encrypted Env Vars; SHA512 no servidor WAHA
@@ -366,7 +366,7 @@ O canal WhatsApp é considerado **MVP-completo** quando:
 - **Sub-PRD 05 (IA + RAG + Handoff)** consome o mesmo evento pra rodar sentiment + resposta automática
 
 ### Externas
-- **WAHA Plus** — instância hospedada (Railway $5-10/mês no MVP; VPS Hetzner ~$10/mês em produção com Nginx + Let's Encrypt)
+- **WAHA Plus** — instância hospedada (Railway $5-10/mês no MVP; VPS Hostgator plano Turing ~R$140/mês em produção com Nginx + Let's Encrypt; datacenter São Paulo)
 - **Supabase Storage** (bucket por tenant pra mídia)
 - **Vercel Cron** (3 jobs: sync-sessions, recover-stuck-messages, process-pending-webhooks)
 - **Fila de envio**: Inngest, Trigger.dev, ou pg_boss (decisão na Spec)
@@ -433,7 +433,7 @@ A serem decididas no spec correspondente (`docs/specs/03-spec-whatsapp-waha.md`)
 9. **Health check granularidade**: além de status WAHA, validar pareamento (chamada test) vs apenas status?
 10. **Rotação de `webhook_secret`**: procedimento manual com janela de overlap vs automatizado por cron
 11. **Política de retenção de `webhook_events_log`** (raw): 30 dias hot + cold storage S3 vs 90 dias hot
-12. **Estratégia de migração entre Railway (MVP) e Hetzner VPS (produção)** sem downtime de sessão
+12. **Estratégia de migração entre Railway (MVP) e Hostgator VPS (produção)** sem downtime de sessão
 13. **Limite exato do hard-cap diário** por status de warm-up (50/100/200/500/1000)
 14. **Lista canônica de regex de STOP detection** (incluir variações regionais? português brasileiro)
 15. **UI específica do super-admin pra gestão cross-tenant de sessões** (mockups)

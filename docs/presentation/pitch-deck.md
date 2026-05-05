@@ -112,7 +112,7 @@ PME brasileiro de e-commerce na **Nuvemshop**:
            │
 ┌──────────▼──────────┐    ┌──────────────────┐    ┌──────────┐
 │  WAHA Plus (NoWeb)  │    │ Vercel AI Gateway│    │ Upstash  │
-│  Hetzner VPS BR     │    │ Anthropic +      │    │ Redis    │
+│  Hostgator VPS BR     │    │ Anthropic +      │    │ Redis    │
 │                     │    │ OpenAI fallback  │    │ (rate)   │
 └─────────────────────┘    └──────────────────┘    └──────────┘
 ```
@@ -182,12 +182,12 @@ PME brasileiro de e-commerce na **Nuvemshop**:
 |---|---|
 | Vercel Pro | $20 |
 | Supabase Pro | $25 + add-ons |
-| Hetzner VPS (WAHA) | $10 |
+| Hostgator VPS (WAHA, plano Turing, SP) | ~R$140 (~$28) |
 | Upstash Redis | $5–15 |
 | WAHA Plus | $30 |
 | Sentry Team | $26 |
 | AI (Anthropic via Gateway) | $50–300 / tenant (variável) |
-| **Total fixo** | **~$120/mês** |
+| **Total fixo** | **~$140/mês** |
 | **Total com IA** | **~$170–420/mês por tenant** |
 
 **Margem**: a R$ 1.500/mês por tenant (preço-alvo) → margem bruta >70% no modo SaaS.

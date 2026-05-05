@@ -11,7 +11,7 @@
 #   5. Acesse http://localhost:3030/dashboard/ (UI do WAHA Plus)
 #      (host port 3030 — :3000 fica reservado pra outros dev tools como Remotion)
 #
-# Em prod, WAHA roda em VPS dedicada (Hetzner) atrás de Nginx (proxy_buffering off
+# Em prod, WAHA roda em VPS dedicada (Hostgator) atrás de Nginx (proxy_buffering off
 # pra SSE). docker-compose aqui é DEV ONLY.
 
 version: "3.9"
