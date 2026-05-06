@@ -40,6 +40,10 @@ export {
   Trash,
   PencilSimple,
   MagnifyingGlass,
+  Pause,
+  Play,
+  Copy,
+  Archive,
   // feedback
   CheckCircle,
   Warning,
