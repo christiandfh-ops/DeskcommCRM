@@ -114,4 +114,6 @@ export type AuditAction =
   | "ai.dispatcher_run"
   | "ai_agent.run_started"
   | "ai_agent.run_completed"
-  | "ai_agent.run_failed";
+  | "ai_agent.run_failed"
+  | "channel.connected"
+  | "channel.reconnected";

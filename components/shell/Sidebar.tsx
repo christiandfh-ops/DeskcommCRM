@@ -2,21 +2,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
-import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple, Robot } from "@/lib/ui/icons";
+import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple, Robot, PlugsConnected } from "@/lib/ui/icons";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
 import { usePermission } from "@/hooks/auth/AuthProvider";
+import { ConnectionHealthDot } from "@/components/connections/ConnectionHealthDot";
 
 interface NavItem {
   href: string;
   label: string;
   icon: PhosphorIcon;
   permission?: string;
+  healthDot?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/app/inbox", label: "Inbox", icon: Inbox },
+  { href: "/app/connections", label: "Conexões", icon: PlugsConnected, healthDot: true },
   { href: "/app/kanban", label: "Kanban", icon: Kanban },
   { href: "/app/contacts", label: "Contatos", icon: Users },
   { href: "/app/team", label: "Equipe", icon: UsersThree },
@@ -57,13 +60,18 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
               title={collapsed ? item.label : undefined}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                 collapsed && "justify-center px-2",
               )}
             >
               <Icon size={18} weight={isActive ? "fill" : "regular"} aria-hidden />
               {!collapsed && <span className="truncate">{item.label}</span>}
+              {item.healthDot && (
+                <ConnectionHealthDot
+                  className={cn(collapsed ? "absolute right-1.5 top-1.5" : "ml-auto")}
+                />
+              )}
             </Link>
           );
         })}

@@ -45,9 +45,9 @@ const LINKS: SettingsLink[] = [
     adminOnly: true,
   },
   {
-    href: "/app/settings/tenant/whatsapp",
-    title: "WhatsApp",
-    description: "Sessões WAHA conectadas.",
+    href: "/app/connections",
+    title: "Conexões WhatsApp",
+    description: "Saúde, reconexão e novos números.",
     adminOnly: true,
   },
   { href: "/app/audit", title: "Audit Log", description: "Histórico de ações.", managerOnly: true },

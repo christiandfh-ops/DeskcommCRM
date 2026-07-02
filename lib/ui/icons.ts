@@ -10,6 +10,8 @@
 export {
   // navigation (inbox icon = Tray in Phosphor)
   Tray as Inbox,
+  PlugsConnected,
+  QrCode,
   Kanban,
   Users,
   UsersThree,

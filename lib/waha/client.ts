@@ -52,6 +52,25 @@ export class WahaClient {
     return (await startRes.json()) as { qr?: string; status: string };
   }
 
+  /**
+   * Stop a session. Idempotent: 404 (unknown) / 422 / 409 (already stopped)
+   * are treated as success so callers can compose reconnect = stop + start.
+   */
+  async stopSession(name: string): Promise<void> {
+    const res = await fetch(
+      `${this.baseUrl}/api/sessions/${encodeURIComponent(name)}/stop`,
+      {
+        method: "POST",
+        headers: { "X-Api-Key": this.apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      },
+    );
+    if (!res.ok && ![404, 422, 409].includes(res.status)) {
+      const body = await res.text().catch(() => "");
+      throw new Error(`waha_stop_${res.status}: ${body.slice(0, 200)}`);
+    }
+  }
+
   async getSessionQr(name: string): Promise<{ qr?: string; status: string }> {
     const res = await fetch(`${this.baseUrl}/api/sessions/${encodeURIComponent(name)}`, {
       headers: { "X-Api-Key": this.apiKey },
@@ -72,6 +91,17 @@ export class WahaClient {
     if (!res.ok) throw new Error(`waha_${res.status}`);
     return res.json();
   }
+}
+
+/**
+ * Traduz erros crus do WAHA (fetch failed, ECONNREFUSED, timeout) numa
+ * mensagem clara para o usuário. Usado quando o container não está no ar.
+ */
+export function wahaFriendlyError(msg: string): string {
+  if (/fetch failed|ECONNREFUSED|ENOTFOUND|und_err|network|timeout|socket|EAI_AGAIN/i.test(msg)) {
+    return "O serviço do WhatsApp (WAHA) não está respondendo. Confirme que o container está no ar e tente de novo.";
+  }
+  return `Falha na comunicação com o WhatsApp (WAHA): ${msg}`;
 }
 
 /**

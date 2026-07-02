@@ -5,6 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useChannelSessions } from "@/hooks/channels/useChannelSessions";
 
 export type InboxTab = "unassigned" | "mine" | "all" | "closed" | "ai";
 
@@ -12,6 +20,7 @@ export interface InboxFiltersValue {
   tab: InboxTab;
   search: string;
   onlyUnread: boolean;
+  channel_session_id?: string;
 }
 
 interface Props {
@@ -21,6 +30,9 @@ interface Props {
 
 export function InboxFilters({ value, onChange }: Props) {
   const [searchInput, setSearchInput] = useState(value.search);
+  const { data: channels } = useChannelSessions({ refetchInterval: 30_000 });
+  // Alternador só aparece com 2+ números — com um só não há o que alternar.
+  const showChannelSwitch = (channels?.length ?? 0) >= 2;
 
   // Debounce search input → propagate to parent.
   useEffect(() => {
@@ -50,6 +62,27 @@ export function InboxFilters({ value, onChange }: Props) {
           aria-label="Buscar conversas"
         />
       </div>
+
+      {showChannelSwitch && (
+        <Select
+          value={value.channel_session_id ?? "all"}
+          onValueChange={(v) =>
+            onChange({ ...value, channel_session_id: v === "all" ? undefined : v })
+          }
+        >
+          <SelectTrigger className="h-8 text-sm" aria-label="Filtrar por número de WhatsApp">
+            <SelectValue placeholder="Todos os números" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os números</SelectItem>
+            {channels?.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.display_name || c.phone_number || c.waha_session_name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      )}
 
       <Tabs
         value={value.tab}
