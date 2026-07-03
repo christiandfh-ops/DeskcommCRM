@@ -2,25 +2,29 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTransition } from "react";
-import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple } from "@/lib/ui/icons";
+import { Kanban, Users, UsersThree, Gear, CaretDoubleLeft, CaretDoubleRight, Inbox, ScalesSimple, Robot, PlugsConnected } from "@/lib/ui/icons";
 import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 import { toggleSidebar } from "@/app/actions/shell/toggleSidebar";
 import { usePermission } from "@/hooks/auth/AuthProvider";
+import { ConnectionHealthDot } from "@/components/connections/ConnectionHealthDot";
 
 interface NavItem {
   href: string;
   label: string;
   icon: PhosphorIcon;
   permission?: string;
+  healthDot?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/app/inbox", label: "Inbox", icon: Inbox },
+  { href: "/app/connections", label: "Conexões", icon: PlugsConnected, healthDot: true },
   { href: "/app/kanban", label: "Kanban", icon: Kanban },
   { href: "/app/contacts", label: "Contatos", icon: Users },
   { href: "/app/team", label: "Equipe", icon: UsersThree },
   { href: "/app/lgpd/requests", label: "LGPD", icon: ScalesSimple, permission: "lgpd.execute_redact" },
+  { href: "/app/ai/agents", label: "Agentes IA", icon: Robot, permission: "ai.agents.view" },
   { href: "/app/settings", label: "Configurações", icon: Gear },
 ];
 
@@ -28,6 +32,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
   const pathname = usePathname();
   const [isPending, startTransition] = useTransition();
   const canLgpd = usePermission("lgpd.execute_redact");
+  const canAiAgents = usePermission("ai.agents.view");
 
   return (
     <aside
@@ -43,6 +48,7 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
       <nav className="flex-1 space-y-1 p-2" aria-label="Navegação principal">
         {NAV_ITEMS.filter((item) => {
           if (item.permission === "lgpd.execute_redact") return canLgpd;
+          if (item.permission === "ai.agents.view") return canAiAgents;
           return true;
         }).map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -54,13 +60,18 @@ export function Sidebar({ collapsed }: { collapsed: boolean }) {
               title={collapsed ? item.label : undefined}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                 isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
                 collapsed && "justify-center px-2",
               )}
             >
               <Icon size={18} weight={isActive ? "fill" : "regular"} aria-hidden />
               {!collapsed && <span className="truncate">{item.label}</span>}
+              {item.healthDot && (
+                <ConnectionHealthDot
+                  className={cn(collapsed ? "absolute right-1.5 top-1.5" : "ml-auto")}
+                />
+              )}
             </Link>
           );
         })}

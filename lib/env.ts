@@ -40,6 +40,12 @@ const schema = z.object({
   CPF_ENCRYPTION_KEY: required("CPF_ENCRYPTION_KEY"),
   NUVEMSHOP_OAUTH_ENCRYPTION_KEY: required("NUVEMSHOP_OAUTH_ENCRYPTION_KEY"),
   WAHA_BYO_ENCRYPTION_KEY: required("WAHA_BYO_ENCRYPTION_KEY"),
+  /**
+   * AES-256-GCM key (32 bytes em base64) usada pra cifrar API keys em
+   * `ai_provider_credentials`. Em produção é obrigatória; em dev a default vazia
+   * é tolerada — `lib/crypto/aes_gcm.ts` lança se a key não bate em runtime.
+   */
+  AI_CRED_AES_KEY: required("AI_CRED_AES_KEY"),
 
   // WAHA
   WAHA_API_BASE_URL: required("WAHA_API_BASE_URL"),
@@ -63,6 +69,15 @@ const schema = z.object({
     .enum(["true", "false"])
     .optional()
     .default("false")
+    .transform((v) => v === "true"),
+
+  // EPIC-13 wave 6: enquanto S-13.08 (runtime real) não landa, o endpoint
+  // :test devolve um trace fake quando esta flag = 'true'. Default 'true' em
+  // dev, deve virar 'false' em produção quando a wave 8 estiver mergeada.
+  INTERNAL_AGENT_RUN_STUB: z
+    .enum(["true", "false"])
+    .optional()
+    .default("true")
     .transform((v) => v === "true"),
 
   // Sentry

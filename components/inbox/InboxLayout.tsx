@@ -55,8 +55,9 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
     () => ({
       ...tabToFilter(filterValue.tab),
       search: filterValue.search || undefined,
+      channel_session_id: filterValue.channel_session_id,
     }),
-    [filterValue.tab, filterValue.search],
+    [filterValue.tab, filterValue.search, filterValue.channel_session_id],
   );
 
   const clientFilter = useMemo(

@@ -9,6 +9,7 @@
 import { randomUUID } from "node:crypto";
 import { type NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api/wrappers";
+import { audit } from "@/lib/audit";
 import { loadAuthUser, resolveActiveOrg } from "@/lib/auth/server";
 import { ROLE_RANK } from "@/lib/auth/types";
 import { createClient } from "@/lib/supabase/server";
@@ -22,7 +23,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const AGENT_COLUMNS =
-  "id, organization_id, name, description, model, system_prompt, is_active, is_default, config, guardrails, active_kb_version_id, created_at, updated_at";
+  "id, organization_id, name, description, model, system_prompt, is_active, is_default, kind, priority, published_version_id, archived_at, config, guardrails, active_kb_version_id, created_at, updated_at";
 
 type RouteCtx = { params: Promise<{ id: string }> };
 
@@ -99,6 +100,23 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx): Promise<Response> 
     return fail("invalid_request", "Body JSON inválido.", 400, { requestId });
   }
 
+  // Extract priority (mcp_agent-only) before strict-schema parse so we don't
+  // reject as unknown key. Validate range manually.
+  let priorityPatch: number | null = null;
+  if (rawBody !== null && typeof rawBody === "object" && "priority" in rawBody) {
+    const p = (rawBody as { priority?: unknown }).priority;
+    if (
+      typeof p !== "number" ||
+      !Number.isInteger(p) ||
+      p < 0 ||
+      p > 1000
+    ) {
+      return fail("validation_failed", "priority inválido (0..1000).", 422, { requestId });
+    }
+    priorityPatch = p;
+    delete (rawBody as Record<string, unknown>).priority;
+  }
+
   const parsed = agentPatchSchema.safeParse(rawBody);
   if (!parsed.success) {
     return fail("validation_failed", "Campos inválidos.", 422, {
@@ -134,6 +152,8 @@ export async function PATCH(req: NextRequest, ctx: RouteCtx): Promise<Response> 
   if (patch.model !== undefined) update.model = patch.model;
   if (patch.system_prompt !== undefined) update.system_prompt = patch.system_prompt;
   if (patch.guardrails !== undefined) update.guardrails = patch.guardrails;
+
+  if (priorityPatch !== null) update.priority = priorityPatch;
 
   if (patch.config !== undefined) {
     const currentConfigRaw = (existing.config ?? {}) as Record<string, unknown>;
@@ -191,7 +211,7 @@ export async function DELETE(_req: NextRequest, ctx: RouteCtx): Promise<Response
 
   const { data: existing, error: loadErr } = await admin
     .from("ai_agents")
-    .select("id, is_default, is_active")
+    .select("id, is_default, is_active, kind, archived_at")
     .eq("id", id)
     .eq("organization_id", activeOrg.orgId)
     .maybeSingle();
@@ -211,9 +231,16 @@ export async function DELETE(_req: NextRequest, ctx: RouteCtx): Promise<Response
     );
   }
 
+  // mcp_agent: soft archive via archived_at + clear published_version_id (pausa
+  // dispatcher). rag_bot legado mantém comportamento is_active=false.
+  const isMcp = existing.kind === "mcp_agent";
+  const patch: Record<string, unknown> = isMcp
+    ? { archived_at: new Date().toISOString(), published_version_id: null, is_active: false }
+    : { is_active: false };
+
   const { error: updErr } = await admin
     .from("ai_agents")
-    .update({ is_active: false })
+    .update(patch)
     .eq("id", id)
     .eq("organization_id", activeOrg.orgId);
 
@@ -221,5 +248,15 @@ export async function DELETE(_req: NextRequest, ctx: RouteCtx): Promise<Response
     return fail("internal_error", "Erro ao desativar agent.", 500, { requestId });
   }
 
-  return ok({ id, is_active: false }, { requestId });
+  void audit({
+    action: "ai_agent.archived",
+    actorUserId: authUser.id,
+    organizationId: activeOrg.orgId,
+    resourceType: "ai_agent",
+    resourceId: id,
+    requestId,
+    metadata: { kind: existing.kind },
+  });
+
+  return ok({ id, archived: isMcp, is_active: false }, { requestId });
 }

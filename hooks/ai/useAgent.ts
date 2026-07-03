@@ -17,6 +17,10 @@ export interface AgentRow {
   config: Record<string, unknown>;
   guardrails: unknown;
   active_kb_version_id: string | null;
+  kind?: "rag_bot" | "mcp_agent" | null;
+  priority?: number | null;
+  published_version_id?: string | null;
+  archived_at?: string | null;
   created_at: string;
   updated_at: string;
 }

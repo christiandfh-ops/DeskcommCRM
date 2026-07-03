@@ -101,6 +101,10 @@ const ACTION_MIN_ROLE: Record<string, Role> = {
   "settings.write": "admin",
   "lgpd.execute_redact": "admin",
   "audit.view": "manager",
+  "ai.agents.view": "manager",
+  "ai.agents.write": "admin",
+  "ai.credentials.view": "manager",
+  "ai.credentials.write": "admin",
 };
 
 export function usePermission(action: string): boolean {

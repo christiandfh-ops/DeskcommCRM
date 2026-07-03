@@ -10,6 +10,8 @@
 export {
   // navigation (inbox icon = Tray in Phosphor)
   Tray as Inbox,
+  PlugsConnected,
+  QrCode,
   Kanban,
   Users,
   UsersThree,
@@ -40,6 +42,10 @@ export {
   Trash,
   PencilSimple,
   MagnifyingGlass,
+  Pause,
+  Play,
+  Copy,
+  Archive,
   // feedback
   CheckCircle,
   Warning,
