@@ -71,6 +71,15 @@ Você está "dentro" do servidor.
 > Se aparecer "Docker não encontrado" mais pra frente, instale com:
 > `curl -fsSL https://get.docker.com | sh`
 
+**Agora libere as portas do site** (sem isso o cadeado de segurança/SSL não funciona):
+
+```bash
+ufw allow 22,80,443/tcp && ufw --force enable
+```
+
+> Se a HostGator tiver um **firewall no painel** dela, libere as portas **80** e **443**
+> lá também. Este é o motivo nº 1 de o site não abrir depois de instalar.
+
 ---
 
 ## Passo 3 — Crie o banco de dados (Supabase, grátis)
@@ -89,6 +98,10 @@ Pronto — você tem as 4 informações do banco.
 ---
 
 ## Passo 4 — Aponte seu domínio para o servidor
+
+> ⏳ **Faça este passo primeiro, de preferência 1 dia antes.** O domínio leva de
+> minutos a horas pra "propagar", e o SSL só é emitido depois que ele apontar pra cá.
+> Deixar isso pra última hora é o que mais atrasa a instalação.
 
 No painel onde você comprou o domínio (HostGator ou outro), crie um registro **A**:
 
