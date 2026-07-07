@@ -14,6 +14,7 @@ import { audit } from "@/lib/audit";
 import type { ListMessagesQuery, SendMessageInput } from "@/lib/schemas";
 import type { Message } from "@/lib/types/messaging";
 import { getWahaClient } from "@/lib/waha/client";
+import { resolveWahaChatId } from "@/lib/waha/send";
 
 type SB = SupabaseClient;
 
@@ -121,7 +122,7 @@ export async function sendMessageHandler(
   const { data: conv, error: convErr } = await supabase
     .from("conversations")
     .select(
-      "id, organization_id, contact_id, channel_session_id, is_group, group_chat_id, contacts:contact_id(phone_number, is_blocked), channel_sessions:channel_session_id(waha_session_name, status)",
+      "id, organization_id, contact_id, channel_session_id, is_group, group_chat_id, contacts:contact_id(phone_number, wa_identity, is_blocked), channel_sessions:channel_session_id(waha_session_name, status)",
     )
     .eq("id", input.conversation_id)
     .maybeSingle();
@@ -140,7 +141,7 @@ export async function sendMessageHandler(
     channel_session_id: string;
     is_group: boolean;
     group_chat_id: string | null;
-    contacts: { phone_number: string | null; is_blocked: boolean } | null;
+    contacts: { phone_number: string | null; wa_identity: string | null; is_blocked: boolean } | null;
     channel_sessions: { waha_session_name: string; status: string } | null;
   };
   const c = conv as unknown as Joined;
@@ -194,12 +195,12 @@ export async function sendMessageHandler(
   let message = created as unknown as Message;
 
   const waha = getWahaClient();
-  const phone = c.contacts?.phone_number;
-  const chatId = c.is_group && c.group_chat_id
-    ? c.group_chat_id
-    : phone
-      ? `${phone.replace(/\D/g, "")}@c.us`
-      : null;
+  const chatId = resolveWahaChatId({
+    isGroup: c.is_group,
+    groupChatId: c.group_chat_id,
+    phoneNumber: c.contacts?.phone_number,
+    waIdentity: c.contacts?.wa_identity,
+  });
 
   if (!waha) {
     const { data: updated } = await supabase
@@ -242,8 +243,14 @@ export async function sendMessageHandler(
         c.channel_sessions.waha_session_name,
         chatId,
         input.body ?? "",
-      )) as { id?: string };
-      const externalId = wahaRes?.id ?? null;
+      )) as { id?: string | { _serialized?: string } };
+      // WAHA/NOWEB returns `id` as a WAMessageKey object ({fromMe, remote, id,
+      // _serialized}), not a plain string — storing it raw got JSON-stringified
+      // into external_id, which never matched the plain-string id the WAHA
+      // webhook uses later, so the ack/status update inserted a duplicate row
+      // instead of updating this one.
+      const rawId = wahaRes?.id;
+      const externalId = typeof rawId === "string" ? rawId : (rawId?._serialized ?? null);
       const { data: updated } = await supabase
         .from("messages")
         .update({ status: "sent", external_id: externalId, ack: 0 })

@@ -36,6 +36,7 @@ import { loadHistoryWithBudget } from "./history";
 import { mintEphemeralToken, revokeEphemeralToken } from "./mcp_token";
 import { pickToolsFromMcp, type RuntimeHandoffSignal } from "./tools";
 import { serializeSteps } from "./serialize";
+import { resolveWahaChatId } from "@/lib/waha/send";
 
 export interface RunAgentInput {
   runId: string;
@@ -264,7 +265,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
       const { data: convRaw } = await admin
         .from("conversations")
         .select(
-          "id, group_chat_id, is_group, contacts:contact_id(phone_number), channel_sessions:channel_session_id(waha_session_name)",
+          "id, group_chat_id, is_group, contacts:contact_id(phone_number, wa_identity), channel_sessions:channel_session_id(waha_session_name)",
         )
         .eq("id", run.conversation_id)
         .eq("organization_id", run.organization_id)
@@ -273,17 +274,17 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
         id: string;
         group_chat_id: string | null;
         is_group: boolean;
-        contacts: { phone_number: string | null } | null;
+        contacts: { phone_number: string | null; wa_identity: string | null } | null;
         channel_sessions: { waha_session_name: string } | null;
       } | null;
       if (conv) {
         waSessionName = conv.channel_sessions?.waha_session_name ?? null;
-        const phone = conv.contacts?.phone_number ?? null;
-        chatId = conv.is_group && conv.group_chat_id
-          ? conv.group_chat_id
-          : phone
-            ? `${phone.replace(/\D/g, "")}@c.us`
-            : null;
+        chatId = resolveWahaChatId({
+          isGroup: conv.is_group,
+          groupChatId: conv.group_chat_id,
+          phoneNumber: conv.contacts?.phone_number,
+          waIdentity: conv.contacts?.wa_identity,
+        });
       }
     }
 
