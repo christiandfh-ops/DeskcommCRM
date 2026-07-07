@@ -4080,3 +4080,124 @@ values
   ('google',    'gemini-2.5-pro',     'Gemini 2.5 Pro',     'Flagship Google',                                          1000000,   125,  500, true, false),
   ('google',    'gemini-2.5-flash',   'Gemini 2.5 Flash',   'Cheap/fast Google',                                        1000000,    30,  120, true, true)
 on conflict (provider, model_id) do nothing;
+
+-- ---- WhatsApp: unificação de conversas por contato (migration 0027) ----
+-- O dump --schema-only não traz mudanças pós-snapshot. Sem este bloco, clones
+-- (install.sh) e clones atualizando (update.sh, que re-aplica baseline.sql)
+-- ficam com o bug: 1 pessoa vira N contatos/conversas (WAHA emite
+-- message+message.any por mensagem; contatos @lid sem unique + check-then-act).
+-- Idempotente e AUTO-CURATIVO: em banco novo o dedup é no-op; em clone já bugado
+-- ele deduplica o histórico ANTES de criar as constraints. Ver a migration
+-- 20260706210000_0027_whatsapp_conversation_unification.sql para o detalhe.
+
+-- A. Identidade canônica (generated)
+alter table public.contacts
+  add column if not exists wa_identity text
+  generated always as (
+    case
+      when phone_number is not null then 'phone:' || phone_number
+      when source_metadata->>'waha_lid' is not null
+        then 'lid:' || regexp_replace(source_metadata->>'waha_lid', '@.*$', '')
+      else null
+    end
+  ) stored;
+
+-- B1. Merge de contatos duplicados (usa is_merged_into como mapa; sem temp tables)
+with ranked as (
+  select id, first_value(id) over (partition by organization_id, wa_identity order by created_at asc, id asc) as canonical_id
+  from public.contacts where wa_identity is not null and is_merged_into is null
+)
+update public.contacts c set is_merged_into = r.canonical_id, merged_at = now()
+from ranked r where c.id = r.id and r.id <> r.canonical_id;
+
+update public.conversations       t set contact_id = c.is_merged_into from public.contacts c where t.contact_id = c.id and c.is_merged_into is not null;
+update public.messages            t set contact_id = c.is_merged_into from public.contacts c where t.contact_id = c.id and c.is_merged_into is not null;
+update public.ai_agent_runs       t set contact_id = c.is_merged_into from public.contacts c where t.contact_id = c.id and c.is_merged_into is not null;
+update public.crm_lead_activities t set contact_id = c.is_merged_into from public.contacts c where t.contact_id = c.id and c.is_merged_into is not null;
+update public.crm_leads           t set contact_id = c.is_merged_into from public.contacts c where t.contact_id = c.id and c.is_merged_into is not null;
+update public.lgpd_requests       t set contact_id = c.is_merged_into from public.contacts c where t.contact_id = c.id and c.is_merged_into is not null;
+update public.orders              t set contact_id = c.is_merged_into from public.contacts c where t.contact_id = c.id and c.is_merged_into is not null;
+
+update public.contacts can set display_name = better.name
+from (
+  select coalesce(c.is_merged_into, c.id) as canonical_id,
+    (array_agg(c.display_name order by (c.display_name ~ '^Contato ') asc, c.created_at asc)
+       filter (where c.display_name is not null and c.display_name <> ''))[1] as name
+  from public.contacts c
+  where coalesce(c.is_merged_into, c.id) in (select is_merged_into from public.contacts where is_merged_into is not null)
+  group by 1
+) better
+where can.id = better.canonical_id and better.name is not null
+  and (can.display_name is null or can.display_name = '' or can.display_name ~ '^Contato ');
+
+-- B2. Merge de conversas 1:1 duplicadas
+update public.messages t set conversation_id = canon.canonical_id
+from (select id, first_value(id) over (partition by organization_id, contact_id, channel_session_id order by created_at asc, id asc) as canonical_id from public.conversations where is_group = false) canon
+where t.conversation_id = canon.id and canon.id <> canon.canonical_id;
+update public.ai_agent_runs t set conversation_id = canon.canonical_id
+from (select id, first_value(id) over (partition by organization_id, contact_id, channel_session_id order by created_at asc, id asc) as canonical_id from public.conversations where is_group = false) canon
+where t.conversation_id = canon.id and canon.id <> canon.canonical_id;
+update public.ai_invocations t set conversation_id = canon.canonical_id
+from (select id, first_value(id) over (partition by organization_id, contact_id, channel_session_id order by created_at asc, id asc) as canonical_id from public.conversations where is_group = false) canon
+where t.conversation_id = canon.id and canon.id <> canon.canonical_id;
+delete from public.conversations d
+using (select id, first_value(id) over (partition by organization_id, contact_id, channel_session_id order by created_at asc, id asc) as canonical_id from public.conversations where is_group = false) canon
+where d.id = canon.id and canon.id <> canon.canonical_id;
+
+-- C. Constraints anti-reduplicação
+create unique index if not exists uniq_contacts_org_wa_identity
+  on public.contacts (organization_id, wa_identity)
+  where wa_identity is not null and is_merged_into is null;
+create unique index if not exists uniq_conversations_1to1_per_contact_session
+  on public.conversations (organization_id, contact_id, channel_session_id)
+  where is_group = false;
+
+-- D. Upsert atômico (a aplicação usa via lib/waha/ingest.ts)
+create or replace function public.fn_upsert_wa_contact(
+  p_org uuid, p_kind text, p_phone text, p_lid text, p_chat_id text, p_notify text
+) returns uuid language plpgsql security definer set search_path = public as $$
+declare v_id uuid;
+begin
+  insert into public.contacts (organization_id, phone_number, source, consent, tags, source_metadata, display_name)
+  values (p_org, case when p_kind = 'phone' then p_phone end, 'whatsapp', '{}'::jsonb, '{}'::text[],
+    case when p_kind = 'lid' then jsonb_build_object('waha_lid', p_lid, 'notify_name', nullif(p_notify, ''))
+      else jsonb_build_object('waha_chat_id', p_chat_id, 'notify_name', nullif(p_notify, '')) end,
+    nullif(p_notify, ''))
+  on conflict (organization_id, wa_identity) where wa_identity is not null and is_merged_into is null
+  do update set display_name = coalesce(contacts.display_name, excluded.display_name), updated_at = now()
+  returning id into v_id;
+  return v_id;
+end; $$;
+
+create or replace function public.fn_upsert_wa_conversation(
+  p_org uuid, p_contact uuid, p_session uuid
+) returns uuid language plpgsql security definer set search_path = public as $$
+declare v_id uuid;
+begin
+  insert into public.conversations (organization_id, contact_id, channel_session_id, channel, status, is_group, unread_count_for_assignee, metadata)
+  values (p_org, p_contact, p_session, 'whatsapp', 'open', false, 0, '{}'::jsonb)
+  on conflict (organization_id, contact_id, channel_session_id) where is_group = false
+  do update set updated_at = now()
+  returning id into v_id;
+  return v_id;
+end; $$;
+
+create or replace function public.fn_mark_conversation_message(
+  p_conv uuid, p_direction text, p_preview text, p_at timestamptz
+) returns void language plpgsql security definer set search_path = public as $$
+begin
+  update public.conversations set
+    last_message_at = p_at, last_message_preview = p_preview,
+    last_inbound_at  = case when p_direction = 'inbound'  then p_at else last_inbound_at  end,
+    last_outbound_at = case when p_direction = 'outbound' then p_at else last_outbound_at end,
+    unread_count_for_assignee = unread_count_for_assignee + case when p_direction = 'inbound' then 1 else 0 end,
+    updated_at = now()
+  where id = p_conv;
+end; $$;
+
+revoke all on function public.fn_upsert_wa_contact(uuid, text, text, text, text, text) from public;
+revoke all on function public.fn_upsert_wa_conversation(uuid, uuid, uuid) from public;
+revoke all on function public.fn_mark_conversation_message(uuid, text, text, timestamptz) from public;
+grant execute on function public.fn_upsert_wa_contact(uuid, text, text, text, text, text) to service_role;
+grant execute on function public.fn_upsert_wa_conversation(uuid, uuid, uuid) to service_role;
+grant execute on function public.fn_mark_conversation_message(uuid, text, text, timestamptz) to service_role;

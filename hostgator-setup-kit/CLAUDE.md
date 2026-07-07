@@ -116,9 +116,16 @@ Se mesmo assim aparecerem, aqui está o diagnóstico pronto:
    isso, garanta que a imagem do app está na tag `latest` mais nova (`bash update.sh`).
 8. **Criar agente de IA: seletor de modelo vazio em todo provedor** — `baseline.sql` é um
    dump `--schema-only`, não traz o seed de 8 modelos (`ai_models`, migration 0023). O
-   `baseline.sql` atual já inclui esse insert (seção "COMPLEMENTO DO BASELINE" no fim do
-   arquivo); se ver a tabela vazia mesmo assim, rode o insert manualmente via `psql_run`
+   `baseline.sql` atual já inclui esse insert (apêndice idempotente no fim do arquivo);
+   se ver a tabela vazia mesmo assim, rode o insert manualmente via `psql_run`
    (ver `_common.sh`) — não é problema de credencial, é dado que faltou popular.
+9. **WhatsApp: mesma pessoa vira vários chats / seu envio aparece como "Contato NNN"** —
+   bug de unificação de conversas (migration 0027). O apêndice do `baseline.sql` já corrige:
+   cria a identidade canônica (`contacts.wa_identity`), deduplica contatos/conversas
+   existentes e trava a re-duplicação. É **auto-curativo** — quem já tinha o CRM bagunçado
+   só precisa rodar `bash update.sh` (re-aplica o baseline, que deduplica e conserta) e
+   reiniciar o app. Se persistir após o update, confirme que o app está na imagem `latest`
+   nova (o código dos webhooks em `lib/waha/ingest.ts` precisa acompanhar o schema).
 
 ## Depois de instalado
 
