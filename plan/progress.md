@@ -29,3 +29,18 @@
   2026-07-16T18:43:17-0300" — EXCETO `.lina/` (estado vivo do Lina Space;
   stashar derrubaria o app do dono). `.lina/` permanece untracked no chão.
 - Próxima sessão: main verde; G1-01 (gate de CI) é a elegível de menor priority.
+
+## 2026-07-16 — sessão 2 do loop (core) — G1-01
+
+- G1-01 (gate de CI): `gov:verify` no package.json (cadeia `&&`, exit!=0 provado
+  com script análogo) + `.github/workflows/ci.yml` novo (pull_request sem filtro
+  de branch — de propósito, PRs gov/* precisam do gate; push só main; pnpm 9 +
+  node 20 byte-idênticos a perf.yml). Sem envs: os 3 comandos não fazem build Next.
+- gov-verifier: PASS, hash-check OK (tree intacto antes/depois da verificação).
+- Convenção registrada: `verification.commit="self"` = o próprio commit atômico
+  da sessão (auto-referência de sha é impossível pré-commit; audite por
+  `git log --grep '<ID>'`). Primeira gravação do update-feature.ts normalizou a
+  formatação do features.json (reformat único previsto no header do script).
+- Chão de entrada: AGENTS.md/GEMINI.md reapareceram (app externo regenera);
+  stashados como "orphan 2026-07-16T18:54:42-0300". `.lina/` segue intocado no chão.
+- Próxima sessão: G1-02 (Postgres descartável + isolamento 2-tenants) é a elegível.

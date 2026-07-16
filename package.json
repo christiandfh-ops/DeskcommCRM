@@ -19,7 +19,8 @@
     "db:migrate": "echo 'TODO: wire supabase db push or pg-migrate' && exit 0",
     "db:reset": "supabase db reset",
     "test:e2e": "playwright test",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "gov:verify": "pnpm typecheck && pnpm lint && pnpm test:unit"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.94",
