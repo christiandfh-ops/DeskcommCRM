@@ -44,3 +44,19 @@
 - Chão de entrada: AGENTS.md/GEMINI.md reapareceram (app externo regenera);
   stashados como "orphan 2026-07-16T18:54:42-0300". `.lina/` segue intocado no chão.
 - Próxima sessão: G1-02 (Postgres descartável + isolamento 2-tenants) é a elegível.
+
+## 2026-07-16 — sessão 3 do loop (core) — G1-02
+
+- G1-02 (Postgres descartável + isolamento 2-tenants): `pnpm test:db` sobe
+  pgvector:pg17 efêmero (porta 127.0.0.1:54329, --rm, trap EXIT), aplica prelude
+  de stubs Supabase (roles, auth.uid() via request.jwt.claims, storage.*) + 
+  baseline install (ON_ERROR_STOP=1) + update, e roda 9 testes RLS via
+  `docker exec psql` — zero devDependency nova.
+- gov-verifier: PASS com probes independentes (UPDATE cross-org → 0 rows;
+  authenticated sem claims → nada vaza; SIGINT → teardown ok). Hash-check OK.
+- Sessão rodada pelo watchdog (Maestro): terminal Arquiteto ficou Idle após
+  G1-01 e a cooperação A2A do Espaço está pausada — continuidade assumida aqui.
+- Nota pra fase futura: create policy do apêndice do baseline (0014/0017) não é
+  idempotente ("already exists" tolerado no update) — melhoria possível, não bug.
+- Próxima sessão: G1-03 (suíte de invariantes dos 7 eixos) ou G1-04 (auditoria
+  de gap, sem deps) — G1-03 tem priority menor (30 < 40).

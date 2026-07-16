@@ -20,6 +20,7 @@
     "db:reset": "supabase db reset",
     "test:e2e": "playwright test",
     "test:unit": "vitest run",
+    "test:db": "bash scripts/test-db.sh",
     "gov:verify": "pnpm typecheck && pnpm lint && pnpm test:unit"
   },
   "dependencies": {
