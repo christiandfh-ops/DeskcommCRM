@@ -60,3 +60,15 @@
   idempotente ("already exists" tolerado no update) — melhoria possível, não bug.
 - Próxima sessão: G1-03 (suíte de invariantes dos 7 eixos) ou G1-04 (auditoria
   de gap, sem deps) — G1-03 tem priority menor (30 < 40).
+
+## 2026-07-16 — sessão 4 do loop (core) — G1-03
+
+- G1-03 (suíte de invariantes dos 7 eixos): 8 arquivos em tests/invariants/
+  (gov-helpers + gov-1..7), 29 testes no total — 22 verdes + 7 catracas it.fails
+  com GAP(Gx). `pnpm test:invariants` = alias do harness test-db.
+- Desvio aceito pelo verifier: gap-exemplo "role não editável via API" JÁ estava
+  fechado (rota do EPIC-09 em app/api/v1/team/[user_id]/role) → virou invariante
+  verde; gaps RBAC reais de G2: pipeline write por agent, conversations write
+  por viewer. Catraca provada em probe (it.fails de assert válido → suíte RED).
+- gov-verifier: PASS, hash-check OK. Apêndice A da spec 13 preenchido (20 linhas).
+- Próxima sessão: G1-04 (auditoria de gap specs 04/05 vs código — sem deps).

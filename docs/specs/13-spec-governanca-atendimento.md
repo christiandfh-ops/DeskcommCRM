@@ -117,7 +117,36 @@ Aprovação do checkpoint G6 é o gatilho da fase FG do Vendaval.
 
 ## Apêndice A — Invariantes de governança (G1-03)
 
-_Preenchido por G1-03: tabela eixo → invariante → status (passa | GAP Gx)._
+Suíte executável em `tests/invariants/gov-*.test.ts` (1 arquivo por eixo),
+rodada por `pnpm test:invariants` (mesmo harness Postgres descartável do
+`pnpm test:db` — `scripts/test-db.sh`). Gap conhecido = `it.fails` com
+comentário `GAP(Gx)`: passa enquanto o gap existe; quando a fase corrigir, o
+`it.fails` quebra e obriga o flip para teste normal (catraca). Isolamento RLS
+entre orgs (pré-requisito de tudo) já é coberto por
+`tests/invariants/rls-isolation.test.ts` (G1-02).
+
+| Eixo | Invariante (arquivo → teste) | Status |
+|---|---|---|
+| 1. RBAC | `gov-1-rbac.test.ts` → "fn_role_at_least ordena viewer < agent < manager < admin" | passa |
+| 1. RBAC | `gov-1-rbac.test.ts` → "fn_user_role_in mapeia viewer→1, agent→2, manager→3, admin→4" | passa |
+| 1. RBAC | `gov-1-rbac.test.ts` → "RLS impede agent de se auto-promover (user_orgs_update é admin-only)" | passa |
+| 1. RBAC | `gov-1-rbac.test.ts` → "role de membro é editável via API — PATCH /api/v1/team/[user_id]/role existe" (gap do plano JÁ fechado pelo EPIC-09) | passa |
+| 1. RBAC | `gov-1-rbac.test.ts` → "agent NÃO escreve config de pipeline (spec 13 §4: manager+)" | GAP G2 |
+| 1. RBAC | `gov-1-rbac.test.ts` → "viewer NÃO escreve em conversations (spec 13 §4: viewer é read-only)" | GAP G2 |
+| 2. Atribuição | `gov-2-assignment.test.ts` → "conversations tem assigned_to_user_id + assigned_at, com FK para auth.users" | passa |
+| 2. Atribuição | `gov-2-assignment.test.ts` → "crm_leads tem owner_user_id" | passa |
+| 2. Atribuição | `gov-2-assignment.test.ts` → "mudança de owner em crm_leads emite lead.assigned no event_log" | passa |
+| 3. Transferência | `gov-3-transfer.test.ts` → "claim atômico: UPDATE condicional atribui 1x; segundo claim concorrente perde" | passa |
+| 3. Transferência | `gov-3-transfer.test.ts` → "transferência é auditada: tabela conversation_assignment_events existe" | GAP G3 |
+| 4. Roteamento/fila | `gov-4-routing.test.ts` → "índice parcial idx_conversations_open_unassigned existe (base da fila)" | passa |
+| 4. Roteamento/fila | `gov-4-routing.test.ts` → "disponibilidade por atendente: tabela attendant_availability existe" | GAP G5 |
+| 5. Escopo | `gov-5-visibility-scope.test.ts` → "agent vê conversa atribuída a si mesmo (controle positivo)" | passa |
+| 5. Escopo | `gov-5-visibility-scope.test.ts` → "agent NÃO vê conversa atribuída a outro agent (spec 13 §4: own*)" | GAP G4 |
+| 6. Handoff IA | `gov-6-ai-handoff.test.ts` → "colunas de handoff do estado atual existem (bot_silenced_until, last_handoff_*, force_human)" | passa |
+| 6. Handoff IA | `gov-6-ai-handoff.test.ts` → "status 'ai_handling' é aceito pelo check de conversations.status" | passa |
+| 6. Handoff IA | `gov-6-ai-handoff.test.ts` → "conversations.assignee_kind ('user'\|'ai') existe" | GAP G6 |
+| 7. Tags | `gov-7-tags.test.ts` → "contacts.tags e crm_leads.tags existem com índice GIN" | passa |
+| 7. Tags | `gov-7-tags.test.ts` → "conversations.tags text[] existe" | GAP G3 |
 
 ## Apêndice B — Auditoria spec 04/05 vs código (G1-04)
 
