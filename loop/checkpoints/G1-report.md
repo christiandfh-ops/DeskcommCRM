@@ -1,5 +1,5 @@
 # Checkpoint G1 — Provas & Fundação — 2026-07-16
-Status: INCOMPLETO — bloqueado (G1-06 human_input pendente na inbox: INB-02)
+Status: COMPLETO
 
 ## 1. Entregue nesta fase
 | Feature | Título | Commit | Verificação |
@@ -10,7 +10,7 @@ Status: INCOMPLETO — bloqueado (G1-06 human_input pendente na inbox: INB-02)
 | G1-03 | Suíte de invariantes de governança (7 eixos) | f7a6b3c | gov-verifier PASS 2026-07-16T19:48-03:00 |
 | G1-04 | Auditoria de gap: specs 04/05 vs código real (Apêndice B) | cedf0ad | gov-verifier PASS 2026-07-16T20:12-03:00 |
 | G1-05 | Modelo de dados alvo + matriz role×recurso (spec 13 §3-§4) | 5e77e55 | gov-verifier PASS 2026-07-16T20:24-03:00 |
-| G1-06 | INPUT HUMANO: decisões de produto | — | **PENDENTE — INB-02 na inbox** |
+| G1-06 | INPUT HUMANO: decisões de produto | 20fe969 | gov-verifier PASS 2026-07-16T20:36-03:00 |
 
 ## 2. Evidências (prova, não afirmação) — gates da fase G1
 
@@ -37,22 +37,18 @@ Status: INCOMPLETO — bloqueado (G1-06 human_input pendente na inbox: INB-02)
   attendant_availability, settings.routing/visibility_mode), cada uma com bloco
   DIRC; §4 com matriz 11 recursos × 4 roles, 7 células PENDENTE G1-06 + 1
   PENDENTE INB-01. Verifier conferiu 8/8 referências baseline.sql:linha.
-- **Decisões de produto (G1-06)**: NÃO colhidas — é exatamente o bloqueio deste
-  checkpoint (ver §3).
+- **Decisões de produto (G1-06)**: colhidas do dono (via chat ao Maestro +
+  AskUserQuestion) e transcritas na spec 13 — (a) own_and_unassigned;
+  (b) manual+round-robin; (c) reusa role agent; (d) transferência imediata
+  auditada; (e) manager vê métricas individuais; INB-01 supervisor §10
+  descartado. Matriz §4 com 0 PENDENTEs (verifier conferiu fidelidade
+  célula a célula).
 
 ## 3. Pendências (cópia auditável da inbox operacional)
 
-- **[INB-01] proposal (G1-04), open** — supervisor read-only (spec 04 §10) não é
-  coberto por nenhuma feature G2-G6 e conflita com a matriz spec 13 §4 (manager
-  org:read+write em conversations). Dono decide: (A) manter supervisor read-only
-  como modo/flag e ajustar matriz; (B) descartar §10 e manager escreve. A célula
-  manager×conversations-write da matriz está PENDENTE INB-01.
-- **[INB-02] human_input (G1-06), open** — as 5 decisões de produto (a)-(e), com
-  opções e recomendação do loop em cada uma: (a) visibilidade default do agent —
-  rec. B (suas + fila); (b) modos de roteamento MVP — rec. B (manual+round-robin);
-  (c) reusar role 'agent' — rec. A; (d) transferência imediata auditada — rec. A;
-  (e) manager vê métricas individuais — rec. A. Inclui pendências acopladas
-  (INB-01 e default do modo de roteamento, spec 13 linha ~191).
+- Nenhuma pendência aberta. INB-01 e INB-02 foram respondidos pelo dono em
+  2026-07-16 e estão CLOSED (respostas aplicadas na spec 13 pela G1-06,
+  verificadas pelo gov-verifier).
 
 ## 4. Riscos observados na construção
 
@@ -71,17 +67,14 @@ Status: INCOMPLETO — bloqueado (G1-06 human_input pendente na inbox: INB-02)
 
 ## 5. O que a PRÓXIMA fase (G2) precisa
 
-1. **Respostas do dono em INB-02** (as 5 decisões) e INB-01 — sem elas G2-01
-   (matriz aplicada server-side) não tem matriz fechada para aplicar.
-2. Transcrição das respostas na spec 13 §4/§5 (fecha G1-06 e zera os PENDENTEs).
-3. Aprovação deste checkpoint (`loop/checkpoints/G1.approved`) + ritual de virada
-   (merge gov/G1 → main, opção A ou B do CHECKPOINT.md — anote a escolha no
-   .approved).
+1. ~~Respostas do dono~~ — FEITO (INB-01/02 closed, spec 13 sem PENDENTEs).
+2. Aprovação: dono autorizou via chat (AskUserQuestion 2026-07-16) a criação do
+   G1.approved em nome dele, com virada por merge+push direto (opção A).
+3. G2-01 pode partir da matriz fechada da spec 13 §4.
 
 ## 6. Custo da fase
 
-- 7 sessões (linhas `started` de 2026-07-16 em loop/sessions.log): 1 reparo de
-  main + 5 features + 1 sessão de checkpoint (esta). Período: 18:39 → 20:35
-  (~2h de parede).
+- 8 sessões (linhas `started` de 2026-07-16 em loop/sessions.log): 1 reparo de
+  main + 6 features + 1 sessão de checkpoint. Período: 18:39 → 20:37 (~2h).
 - Tokens: sem medição por sessão; implementers/verifiers somaram ~700k tokens de
   subagentes (estimativa da telemetria do orquestrador).
