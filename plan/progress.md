@@ -410,3 +410,6 @@
   own-scope do agent provado pelo gov-8.
 - gov-verifier PASS 1ª rodada, hash OK. 96 invariantes + 165 unit.
 - FASE G4 COMPLETA (5/5) → checkpoint G4 na sequência, loop PARA no gate.
+- Checkpoint G4 emitido (loop/checkpoints/G4-report.md, COMPLETO 5/5), loop
+  PARADO aguardando aprovação do dono (G4.approved) ou recusa (.rejected).
+  5 INB abertos (03/04/05/08/10, proposal/não-vetantes) copiados no §3.
