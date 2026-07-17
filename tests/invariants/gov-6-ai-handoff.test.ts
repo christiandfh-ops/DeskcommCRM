@@ -28,10 +28,10 @@ describe("eixo 6 — handoff IA→humano", () => {
     expect(def).toContain("ai_handling");
   });
 
-  // GAP(G6): handoff ainda não é reassignment auditado de 1ª classe — a
-  // coluna conversations.assignee_kind ('user'|'ai', spec 13 §3) não existe;
-  // quem atende (humano vs IA) segue ambíguo entre status e ai_handling.
-  it.fails("conversations.assignee_kind ('user'|'ai') existe (spec 13 §3)", () => {
+  // G3-02 fechou o GAP: assignee_kind ('user'|'ai') existe (migration 0032);
+  // handoff IA→humano é reassignment auditado (reason='handoff') e kind='user'
+  // veta o bot deterministicamente (workers/ai-response-worker.ts).
+  it("conversations.assignee_kind ('user'|'ai') existe (spec 13 §3)", () => {
     expect(columnExists("conversations", "assignee_kind")).toBe(true);
   });
 });

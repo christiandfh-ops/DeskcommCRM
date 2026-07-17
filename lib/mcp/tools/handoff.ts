@@ -7,7 +7,10 @@
  *   - event_log INSERT event_type='ai.handoff_triggered'
  *   - Realtime broadcast `org:<org>:queue` event=handoff_pending
  *   - api_audit_log action='ai.handoff_triggered'
- *   - conversations.assigned_to_user_id round-robin entre membros agent+ ativos
+ *   - G3-02: handoff é reassignment auditado — com elegível (round-robin agent+),
+ *     fn_conversation_assign move kind ai→'user' + evento reason='handoff' na
+ *     MESMA transação; sem elegível, conversa vai à fila (assigned null, kind
+ *     null) e o evento reason='handoff' é gravado do mesmo jeito.
  *
  * Nenhum mirror REST. Wave 4 introduz como tool MCP only.
  */
@@ -15,6 +18,7 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { triggerHandoff } from "@/lib/ai/handoff/orchestrator";
+import { logger } from "@/lib/logger";
 import type { McpToolDefinition } from "../types";
 
 const inputShape = {
@@ -103,23 +107,63 @@ export const crmRequestHumanHandoff: McpToolDefinition<typeof inputShape> = {
 
     let assignedUserId: string | null = null;
     if (result.triggered) {
-      assignedUserId = await pickRoundRobinAssignee(
+      const picked = await pickRoundRobinAssignee(
         ctx.supabase,
         ctx.organizationId,
         input.suggested_assignee_role ?? "agent",
       );
-      if (assignedUserId) {
-        const { error: assignErr } = await ctx.supabase
+      if (picked) {
+        // G3-02: reassignment auditado — UPDATE (kind ai→'user') + evento
+        // reason='handoff' na MESMA transação (fn_conversation_assign, 0031/0032).
+        // Service role: auth.uid() null → changed_by null (sistema).
+        const { data: rows, error: assignErr } = await ctx.supabase.rpc(
+          "fn_conversation_assign",
+          {
+            p_organization_id: ctx.organizationId,
+            p_conversation_id: input.conversation_id,
+            p_to_user_id: picked,
+            p_reason: "handoff",
+            p_enforce_expected: false,
+          },
+        );
+        if (assignErr || !Array.isArray(rows) || rows.length === 0) {
+          logger.warn("[mcp.handoff] assignment failed", {
+            conversation_id: input.conversation_id,
+            error: assignErr?.message ?? "0 rows (conversation not found)",
+          });
+        } else {
+          assignedUserId = picked;
+        }
+      }
+      if (!assignedUserId) {
+        // Fila (roteamento vigente sem elegível): sem dono, kind sai de 'ai' →
+        // null; o handoff continua auditado (evento reason='handoff', from/to null).
+        const { error: kindErr } = await ctx.supabase
           .from("conversations")
-          .update({
-            assigned_to_user_id: assignedUserId,
-            assigned_at: new Date().toISOString(),
-          })
+          .update({ assignee_kind: null })
           .eq("id", input.conversation_id)
           .eq("organization_id", ctx.organizationId);
-        if (assignErr) {
-          console.error("[mcp.handoff] assignment failed", assignErr.message);
-          assignedUserId = null;
+        if (kindErr) {
+          logger.warn("[mcp.handoff] assignee_kind clear failed", {
+            conversation_id: input.conversation_id,
+            error: kindErr.message,
+          });
+        }
+        const { error: eventErr } = await ctx.supabase
+          .from("conversation_assignment_events")
+          .insert({
+            organization_id: ctx.organizationId,
+            conversation_id: input.conversation_id,
+            from_user_id: null,
+            to_user_id: null,
+            changed_by: null,
+            reason: "handoff",
+          });
+        if (eventErr) {
+          logger.warn("[mcp.handoff] handoff event insert failed", {
+            conversation_id: input.conversation_id,
+            error: eventErr.message,
+          });
         }
       }
     }

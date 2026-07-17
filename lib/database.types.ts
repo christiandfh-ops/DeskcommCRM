@@ -1267,6 +1267,7 @@ export type Database = {
         Row: {
           assigned_at: string | null;
           assigned_to_user_id: string | null;
+          assignee_kind: string | null;
           bot_silenced_until: string | null;
           channel: string;
           channel_session_id: string;
@@ -1295,6 +1296,7 @@ export type Database = {
         Insert: {
           assigned_at?: string | null;
           assigned_to_user_id?: string | null;
+          assignee_kind?: string | null;
           bot_silenced_until?: string | null;
           channel?: string;
           channel_session_id: string;
@@ -1323,6 +1325,7 @@ export type Database = {
         Update: {
           assigned_at?: string | null;
           assigned_to_user_id?: string | null;
+          assignee_kind?: string | null;
           bot_silenced_until?: string | null;
           channel?: string;
           channel_session_id?: string;
@@ -2743,6 +2746,7 @@ export type Database = {
         Returns: {
           assigned_at: string | null;
           assigned_to_user_id: string | null;
+          assignee_kind: string | null;
           bot_silenced_until: string | null;
           channel: string;
           channel_session_id: string;
@@ -2802,6 +2806,10 @@ export type Database = {
           p_preview: string;
         };
         Returns: undefined;
+      };
+      fn_member_role_in_org: {
+        Args: { p_org: string; p_user: string };
+        Returns: string;
       };
       fn_publish_ai_agent_version: {
         Args: { p_agent_id: string; p_org_id: string; p_version_id: string };

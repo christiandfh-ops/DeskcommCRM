@@ -252,7 +252,7 @@ async function buildContext(input: BuildContextInput): Promise<GuardDecision> {
   const { data: conv, error: convErr } = await admin
     .from("conversations")
     .select(
-      "id, organization_id, contact_id, channel_session_id, last_inbound_at, bot_silenced_until, last_handoff_at, contacts:contact_id(id, display_name, locale, is_blocked, force_human)",
+      "id, organization_id, contact_id, channel_session_id, last_inbound_at, bot_silenced_until, last_handoff_at, assignee_kind, contacts:contact_id(id, display_name, locale, is_blocked, force_human)",
     )
     .eq("id", input.conversationId)
     .eq("organization_id", input.organizationId)
@@ -269,6 +269,7 @@ async function buildContext(input: BuildContextInput): Promise<GuardDecision> {
     last_inbound_at: string | null;
     bot_silenced_until: string | null;
     last_handoff_at: string | null;
+    assignee_kind: string | null;
     contacts: {
       id: string;
       display_name: string | null;
@@ -281,6 +282,9 @@ async function buildContext(input: BuildContextInput): Promise<GuardDecision> {
   if (!c.contacts) return skip("conversation_not_found", "contact join missing");
   if (c.contacts.is_blocked) return skip("contact_blocked");
   if (c.contacts.force_human) return skip("force_human");
+  // G3-02 — assignee de 1ª classe: humano atendendo (kind='user') veta o bot
+  // deterministicamente, mesma família de guard de force_human/bot_silenced_until.
+  if (c.assignee_kind === "user") return skip("assigned_to_human");
 
   // 24h window (IA-01). Use last_inbound_at — webhook updates it on receive.
   if (c.last_inbound_at) {

@@ -102,17 +102,20 @@ pipeline do bot vetado deterministicamente (mesma família de guard de
 `force_human`/`bot_silenced_until`).
 
 ```sql
--- RASCUNHO (migration real em G3-02)
+-- Migration real: 0032_conversation_assignee_kind (G3-02)
 alter table conversations
   add column if not exists assignee_kind text
   check (assignee_kind in ('user','ai'));
 
--- Coerência com assigned_to_user_id: null = sem atendente (fila).
+-- Coerência com assigned_to_user_id em FORMA DE IMPLICAÇÃO (acceptance G3-02):
+-- kind='user' ⇒ dono humano; kind='ai' ⇒ sem dono; kind null é livre — escritas
+-- legadas que não conhecem a coluna (ex.: PATCH de status) continuam válidas e
+-- a semântica forte chega pelos caminhos canônicos (fn_conversation_assign).
 alter table conversations
   add constraint conversations_assignee_kind_coherence check (
     (assignee_kind = 'user' and assigned_to_user_id is not null) or
     (assignee_kind = 'ai'   and assigned_to_user_id is null)     or
-    (assignee_kind is null  and assigned_to_user_id is null)
+    (assignee_kind is null)
   );
 
 -- Backfill (na migration, ANTES da constraint — doutrina de migrations §8):

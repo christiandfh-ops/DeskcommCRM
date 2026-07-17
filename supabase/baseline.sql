@@ -4364,3 +4364,138 @@ $$;
 revoke all on function public.fn_conversation_assign(uuid, uuid, uuid, text, uuid, boolean) from public;
 grant execute on function public.fn_conversation_assign(uuid, uuid, uuid, text, uuid, boolean)
   to authenticated, service_role;
+
+-- ---- assignee_kind + guard de membership na fn_conversation_assign (migration 0032) ----
+-- G3-02 (gov-loop): IA como assignee de 1ª classe (spec 13 §3.2). Coluna
+-- conversations.assignee_kind ('user'|'ai') + CHECK de coerência em forma de
+-- implicação (kind='user' ⇒ dono humano; kind='ai' ⇒ sem dono; kind null livre
+-- pra escritas legadas). Backfill ANTES da constraint (auto-curativo em clones).
+-- Forward-fix INB-06a: fn_conversation_assign valida DENTRO da função que o
+-- destino é membro ativo agent+ da org (via fn_member_role_in_org, SECURITY
+-- DEFINER) e mantém assignee_kind coerente em claim/transfer/release/handoff.
+-- fn_member_role_in_org é executável APENAS por authenticated (responde só a
+-- membro ativo da org) e service_role (auth.uid() null); anon tem EXECUTE
+-- revogado EXPLICITAMENTE — o default privilege do Supabase concede EXECUTE a
+-- anon em toda função nova e o JWT anon também tem uid null.
+
+alter table public.conversations
+  add column if not exists assignee_kind text
+  check (assignee_kind in ('user','ai'));
+
+update public.conversations
+   set assignee_kind = 'user'
+ where assigned_to_user_id is not null
+   and assignee_kind is distinct from 'user';
+
+update public.conversations
+   set assignee_kind = null
+ where assigned_to_user_id is null
+   and assignee_kind = 'user';
+
+update public.conversations
+   set assignee_kind = 'ai'
+ where status = 'ai_handling'
+   and assigned_to_user_id is null
+   and assignee_kind is distinct from 'ai';
+
+alter table public.conversations
+  drop constraint if exists conversations_assignee_kind_coherence;
+alter table public.conversations
+  add constraint conversations_assignee_kind_coherence check (
+    (assignee_kind = 'user' and assigned_to_user_id is not null) or
+    (assignee_kind = 'ai'   and assigned_to_user_id is null)     or
+    (assignee_kind is null)
+  );
+
+create or replace function public.fn_member_role_in_org(p_user uuid, p_org uuid)
+returns text
+language sql stable security definer
+set search_path = public
+as $$
+  select uo.role
+    from public.user_organizations uo
+   where uo.user_id = p_user
+     and uo.organization_id = p_org
+     and uo.revoked_at is null
+     and (
+       auth.uid() is null
+       or exists (
+         select 1 from public.user_organizations me
+          where me.user_id = auth.uid()
+            and me.organization_id = p_org
+            and me.revoked_at is null
+       )
+     )
+   limit 1;
+$$;
+
+revoke all on function public.fn_member_role_in_org(uuid, uuid) from public;
+-- O revoke from public NÃO cobre o grant DIRETO que anon carrega via
+-- ALTER DEFAULT PRIVILEGES ... GRANT ALL ON FUNCTIONS TO anon (padrão
+-- Supabase). Sem esta linha, o PostgREST expõe a função como RPC pública
+-- (anon key vai pro browser) e o ramo auth.uid() null responde a request
+-- anônimo — enumeração de membership/role de qualquer tenant.
+revoke execute on function public.fn_member_role_in_org(uuid, uuid) from anon;
+grant execute on function public.fn_member_role_in_org(uuid, uuid)
+  to authenticated, service_role;
+
+create or replace function public.fn_conversation_assign(
+  p_organization_id uuid,
+  p_conversation_id uuid,
+  p_to_user_id uuid,
+  p_reason text,
+  p_expected_assignee uuid default null,
+  p_enforce_expected boolean default false
+) returns setof public.conversations
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_from uuid;
+  v_conv public.conversations%rowtype;
+begin
+  if p_to_user_id is not null then
+    if coalesce(public.fn_member_role_in_org(p_to_user_id, p_organization_id), 'none')
+         not in ('agent','manager','admin') then
+      raise exception 'assignee_not_eligible_member'
+        using hint = 'target must be an active agent+ member of the organization';
+    end if;
+  end if;
+
+  select assigned_to_user_id into v_from
+    from public.conversations
+   where id = p_conversation_id
+     and organization_id = p_organization_id
+   for update;
+
+  if not found then
+    return;
+  end if;
+
+  if p_enforce_expected and v_from is distinct from p_expected_assignee then
+    return;
+  end if;
+
+  update public.conversations
+     set assigned_to_user_id = p_to_user_id,
+         assigned_at = case when p_to_user_id is null then null else now() end,
+         assignee_kind = case when p_to_user_id is null then null else 'user' end,
+         status = case when p_to_user_id is null then 'open' else 'claimed' end,
+         status_changed_at = now(),
+         unread_count_for_assignee = 0,
+         updated_at = now()
+   where id = p_conversation_id
+   returning * into v_conv;
+
+  insert into public.conversation_assignment_events
+    (organization_id, conversation_id, from_user_id, to_user_id, changed_by, reason)
+  values
+    (p_organization_id, p_conversation_id, v_from, p_to_user_id, auth.uid(), p_reason);
+
+  return next v_conv;
+end;
+$$;
+
+revoke all on function public.fn_conversation_assign(uuid, uuid, uuid, text, uuid, boolean) from public;
+grant execute on function public.fn_conversation_assign(uuid, uuid, uuid, text, uuid, boolean)
+  to authenticated, service_role;

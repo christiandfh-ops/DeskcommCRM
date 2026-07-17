@@ -218,3 +218,25 @@
   (schema_migrations parou na 0027; 0031 aplicada só pro screenshot).
 - Próxima sessão: G3-02 (assignee_kind) destravou; G3-03 também elegível — a
   regra manda menor priority ⇒ G3-02 (prio 20).
+
+## 2026-07-17 — sessão 14 do loop (core) — G3-02 (1 rodada de reparo)
+
+- G3-02 (assignee_kind): migration 0032 em tripla — coluna assignee_kind +
+  CHECK de coerência (forma de implicação, verbatim do acceptance) + backfill
+  antes da constraint. Handoff grava evento reason=handoff (kind ai→user com
+  elegível / fila sem elegível). Veto determinístico do bot no ai-response-worker
+  (kind='user' ⇒ skip 'assigned_to_human'). Forward-fix INB-06a: guard de
+  membership dentro de fn_conversation_assign via helper fn_member_role_in_org.
+- FAIL na 1ª verificação: fn_member_role_in_org (SECURITY DEFINER) executável
+  por anon (grant herdado de ALTER DEFAULT PRIVILEGES do baseline) + ramo
+  auth.uid() null respondia a request anônimo → enumeração de role cross-tenant
+  sem autenticar. Reparo (1 rodada): revoke execute from anon explícito nas 2
+  cópias (migration+baseline) + invariante que prova permission denied SOB role
+  anon real + service_role ainda servido. Re-verificação FRESCA: PASS, hash OK.
+- 47 invariantes + 135 unit verdes. database.types.ts editado à mão (gen do
+  container poluiria Functions com extensões).
+- INB-07 aberto: varredura do verifier achou 6 SECURITY DEFINER de ESCRITA
+  anon-executáveis pré-existentes (fn_upsert_wa_*, emit_event, fn_log_event,
+  fn_audit_log_row, fn_mark_conversation_message) — gap do baseline, não da
+  G3-02. Os helpers RLS caller-scoped (fn_user_*) NÃO vazam (probe: anon → null).
+- Próxima sessão: G3-03 (dono do lead no kanban, prio 30) — elegível.

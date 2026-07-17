@@ -303,8 +303,14 @@
       "priority": 20,
       "lane": "core",
       "kind": "build",
-      "passes": false,
-      "verification": null
+      "passes": true,
+      "verification": {
+        "verdict": "PASS",
+        "by": "gov-verifier",
+        "at": "2026-07-17T08:38:44-0300",
+        "commit": "self",
+        "note": "repaired-1-round: anon leak on fn_member_role_in_org closed, re-verified fresh"
+      }
     },
     {
       "id": "G3-03",

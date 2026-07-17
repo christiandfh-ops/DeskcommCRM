@@ -35,6 +35,7 @@ export type SkipReason =
   | "kb_version_missing"
   | "contact_blocked"
   | "force_human"
+  | "assigned_to_human"
   | "window_24h_expired"
   | "budget_throttled"
   | "silenced_post_handoff"
