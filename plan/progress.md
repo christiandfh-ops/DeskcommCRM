@@ -348,3 +348,20 @@
   pra G4-02/03 (a UI/queries do agent precisam contar com isso).
 - Próxima sessão: G4-02 (inbox com escopo minhas/fila/todas) ou G4-03 (escopo no
   kanban) — ambas dep G4-01. Menor priority ⇒ G4-02 (prio 20).
+
+## 2026-07-17 — sessão 20 do loop (core) — G4-02
+
+- G4-02 (inbox com escopo): tabs Minhas/Fila/Todas já existiam — gap era: (A)
+  esconder 'Todas' pra agent quando mode≠all (helper visibleInboxTabs; role já
+  no ActiveOrg, visibility_mode exposto estendendo o select de org do AppLayout
+  — sem query nova, sem migration); (B) contagens via GET /conversations/counts
+  com createClient() USER-SCOPED (herda RLS, nunca admin); (C) tab vira ?filter=
+  na URL (deep-link); (D) URL direta fora do escopo → useConversation 404 →
+  "Conversa não encontrada ou fora do seu acesso", sem stack trace.
+- Reforço do Maestro provado: esconder tab é cosmético, a RLS é a garantia —
+  gov-5b (invariante NOVO) prova agent all=2 (own+fila) < manager all=3 (total);
+  agent forçando where-id-other=0. A diferença agent<manager É a prova anti-admin.
+- Incidente: implementer morreu 1x por API timeout (stream idle) no meio; o
+  SendMessage do reforço RESUMIU automaticamente do ponto — concluiu na 2ª.
+- gov-verifier PASS 1ª rodada, hash OK. 165 unit + 71 invariantes (gov-5b 6/6).
+- Próxima: G4-03 (escopo no kanban/leads pra agent) — dep G4-01, prio 30.
