@@ -2737,6 +2737,18 @@ export type Database = {
         };
         Returns: string;
       };
+      fn_attendant_metrics: {
+        Args: { p_from: string; p_org: string; p_owner?: string; p_to: string };
+        Returns: Json;
+      };
+      fn_can_view_conversation: {
+        Args: { p_assigned_to_user_id: string; p_org: string };
+        Returns: boolean;
+      };
+      fn_can_view_lead: {
+        Args: { p_org: string; p_owner_user_id: string };
+        Returns: boolean;
+      };
       fn_conversation_assign: {
         Args: {
           p_conversation_id: string;
