@@ -287,3 +287,6 @@
 - Flip do it.fails do eixo 7 + invariante de filtro org-scoped (org1=1, org2=1,
   global≥2, não vaza). gov-verifier PASS 1ª rodada, hash OK. 154 unit + 48 invariantes.
 - FASE G3 COMPLETA (5/5 passes:true) → checkpoint G3 na sequência, loop PARA no gate.
+- Checkpoint G3 emitido (loop/checkpoints/G3-report.md, COMPLETO 5/5), loop
+  PARADO aguardando aprovação do dono (G3.approved) ou recusa (.rejected).
+  7 INB abertos (03-09, todos proposal/não-vetantes) copiados no §3 do report.
