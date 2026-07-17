@@ -387,3 +387,26 @@
 - INB-10 aberto: crm_lead_activities/crm_lead_links seguem FOR ALL org-flat —
   timeline/vínculos de lead invisível vazam por query direta. Gap pré-existente.
 - Próxima: G4-04 (métricas por responsável) — fecha a fase G4.
+
+## 2026-07-17 — sessão 22 do loop (core) — G4-04 (fase G4 COMPLETA)
+
+- G4-04 (métricas por responsável): spec §6 escrita ANTES do código (won/lost
+  por owner sobre closed_at, conversas por assignee sobre assigned_at, TTFR =
+  1ª outbound de HUMANO menos 1ª inbound). fn_attendant_metrics SECURITY INVOKER
+  — a RLS 0035/0036 é o gate (agent agrega = só as próprias, automático; manager+
+  org-wide + filtro por atendente). Migration 0037 tripla: 2 índices parciais.
+  Rota /api/v1/metrics/attendants client USER-SCOPED (admin só resolve nome).
+  UI nova: página Desempenho (funil + tabela por atendente + filtro) + nav.
+- 2 detalhes do Maestro provados: (1) TTFR exclui bot (sent_by_user_id not null;
+  bot tem sent_via='ai'+null) — seed com bot ANTES da humana, TTFR ignora;
+  (2) EXPLAIN sob role agent E manager (não superuser), Index Scan, sem seq scan.
+- Números exatos (gov-8, 12/12): manager A=[3,1,2,90s] B=[1,2,1,30s]; won/conversa
+  fora da janela não conta; agent A own-scope vê própria + [] pra B; funil escopo-aware.
+- Screenshot via Supabase LOCAL (não tocou remoto): G4-04-metrics-manager.png
+  primário com dados reais. INCIDENTE de infra: supabase start local travou o
+  Docker do host; reiniciei o Docker Desktop (kill -9 + reopen, 2 tentativas) e
+  derrubei os containers supabase locais — ambiente recuperado, docker run OK,
+  test:db rodou no verifier. O -agent.png saiu em loading (trava na captura);
+  own-scope do agent provado pelo gov-8.
+- gov-verifier PASS 1ª rodada, hash OK. 96 invariantes + 165 unit.
+- FASE G4 COMPLETA (5/5) → checkpoint G4 na sequência, loop PARA no gate.
