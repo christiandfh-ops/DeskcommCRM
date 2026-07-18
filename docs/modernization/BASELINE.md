@@ -56,7 +56,12 @@ Licenca: `LICENSE` contem MIT. O README tambem declara MIT. A documentacao desta
 - Docker Buildx: `v0.35.0-desktop.2`.
 - Buildx builder `desktop-linux`: suporta `linux/amd64` e `linux/arm64`, entre outras plataformas.
 
-Observacao: workflows e Dockerfile usam pnpm 9, mas o ambiente local resolveu `pnpm` para v11. Isso afetou os comandos `pnpm <script>`.
+Ambiente canonico do projeto:
+
+- Node 20, conforme `Dockerfile`, `.nvmrc`, workflows e `package.json` (`engines.node >=20`).
+- pnpm `9.15.9`, conforme `Dockerfile` (`corepack prepare pnpm@9.15.9 --activate`) e workflows (`pnpm/action-setup@v4` com `version: 9`).
+
+Observacao: o baseline local foi executado em ambiente nao canonico: Node 26 + pnpm 11. Isso afetou os comandos `pnpm <script>` e deve ser tratado como incerteza de ambiente ate reproduzir em Linux/CI com Node 20 + pnpm 9.15.9.
 
 ## Instalacao de dependencias
 
@@ -117,8 +122,9 @@ Passaram 165 testes unitarios cobrindo, entre outros:
 - Invariantes SQL/RLS existem em `tests/invariants/`, mas nao foram executados no Windows atual por falha de `scripts/test-db.sh` com CRLF/bash.
 - E2E Playwright nao foi executado porque exige dev server, credenciais/fixtures e baseline de banco funcional.
 - Nao ha teste de caracterizacao da migracao para PostgreSQL sem Supabase.
-- Nao ha teste de contrato para uma interface `WhatsAppProvider`; o envio atual esta acoplado a WAHA.
+- Nao ha teste de contrato para interfaces comuns de WhatsApp (`MessagingProvider` e `ChannelProvisioner`); o envio/provisionamento atual esta acoplado a WAHA.
 - Nao ha teste automatizado de build Docker multiarch arm64; workflow publica apenas amd64.
+- Nao foram observados workflow runs associados ao commit do PR/branch `chore/baseline-audit` no fork no momento da revisao (`gh run list --repo christiandfh-ops/DeskcommCRM --branch chore/baseline-audit --limit 10` retornou vazio). GitHub Actions precisa ser verificado/habilitado no fork antes de usar checks do PR como baseline.
 
 ## Estado reproduzivel minimo
 
@@ -135,5 +141,4 @@ pnpm install --frozen-lockfile
 .\node_modules\.bin\vitest.cmd run
 ```
 
-Em Linux/CI, usar pnpm 9 como nos workflows deve ser testado antes de tratar os problemas de pnpm v11 como falha do projeto.
-
+Em Linux/CI, usar Node 20 + pnpm 9.15.9 como no Dockerfile/workflows deve ser testado antes de tratar os problemas de Node 26 + pnpm 11 como falha do projeto.

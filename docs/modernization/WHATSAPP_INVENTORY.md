@@ -2,7 +2,7 @@
 
 ## Resumo
 
-O WhatsApp atual e implementado via WAHA, com persistencia em Supabase/Postgres. A futura Meta API deve entrar por uma interface, mas a Fase 0 nao implementa essa interface.
+O WhatsApp atual e implementado via WAHA, com persistencia em Supabase/Postgres. A futura Meta API deve entrar por interfaces comuns, mas a Fase 0 nao implementa nem congela essas interfaces.
 
 Contratos a preservar:
 
@@ -103,23 +103,33 @@ Variaveis:
 9. Atualiza preview/last message em `conversations`.
 10. Audita `message.sent` e emite `event_log`.
 
-## Pontos para `WhatsAppProvider`
+## Interfaces futuras
 
-Interface minima futura:
+A interface abaixo ainda nao deve ser tratada como definitiva. A proposta anterior estava moldada demais ao WAHA porque misturava provisionamento de canal (`startSession`, `stopSession`, `getQr`) com mensageria. Meta WhatsApp Cloud API nao usa QR/sessao WAHA; usa WABA, `phone_number_id`, tokens, Embedded Signup e templates.
 
-- `createSession(input)`
-- `startSession(sessionName)`
-- `stopSession(sessionName)`
-- `getSessionStatus(sessionName)`
-- `getQr(sessionName)`
-- `sendText({ sessionName, chatId, text })`
-- `verifyWebhook(rawBody, headers, sessionSecret)`
-- `normalizeWebhook(rawBody)`
-- `resolveExternalMessageId(response)`
-- `mapAck(payload)`
-- `mapContactIdentity(payload)`
+Separacao recomendada:
 
-O provider nao deve conhecer Supabase. Ele deve devolver DTOs normalizados; repositorios do CRM persistem contatos, conversas, mensagens e logs dentro de um contexto de organizacao.
+### `MessagingProvider`
+
+Responsavel por comportamento comum entre WAHA e Meta:
+
+- envio de mensagens;
+- verificacao de webhook;
+- normalizacao de webhook para DTO canonico;
+- status/ack de mensagens;
+- identidade de contato/conversa;
+- midia inbound/outbound;
+- normalizacao de erros e codigos recuperaveis/permanentes;
+- mapeamento de IDs externos para idempotencia.
+
+### `ChannelProvisioner`
+
+Responsavel por conectar, configurar e manter canais, aceitando capacidades diferentes por provedor:
+
+- WAHA: sessao, start/stop/reconnect, QR, engine, health de sessao.
+- Meta: WABA, `phone_number_id`, token, Embedded Signup, templates, assinatura/validacao de webhook e configuracao de app.
+
+`MessagingProvider` e `ChannelProvisioner` nao devem conhecer Supabase. Eles devem devolver DTOs normalizados; repositorios do CRM persistem contatos, conversas, mensagens, canais e logs dentro de uma transacao com contexto de organizacao.
 
 ## Divergencias/risco WAHA atual
 
@@ -131,11 +141,11 @@ O provider nao deve conhecer Supabase. Ele deve devolver DTOs normalizados; repo
 
 ## Laboratorio Meta recomendado
 
-Fora do produto principal:
+O laboratorio Meta deve acontecer antes de congelar as interfaces comuns. Fora do produto principal:
 
 1. Criar app/lab isolado com numero de teste Meta.
 2. Mapear webhook Meta para DTO normalizado equivalente a `WahaEnvelope`.
 3. Validar envio de texto, status/ack, erros e rate limits.
 4. Comparar IDs externos com idempotencia atual.
-5. So depois propor implementacao de `WhatsAppProvider` no CRM.
-
+5. Comparar provisionamento Meta (WABA/phone number/templates/Embedded Signup) com WAHA (sessao/QR).
+6. So depois congelar `MessagingProvider` e `ChannelProvisioner`.

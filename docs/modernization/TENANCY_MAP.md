@@ -2,9 +2,9 @@
 
 ## Modelo atual
 
-O projeto ja nasceu multi-tenant no schema Supabase. A chave principal de isolamento e `organization_id`, com membership em `user_organizations` e super-admin transversal em `platform_admins`.
+O projeto ja e multiempresa. Ele nasceu multi-tenant no schema Supabase, com `organization_id` como chave principal de isolamento, membership em `user_organizations` e super-admin transversal em `platform_admins`.
 
-O objetivo da migracao nao e "adicionar multiempresa do zero"; e preservar e endurecer esse contrato fora do Supabase.
+O objetivo da migracao nao e criar multi-tenancy do zero. O objetivo e preservar e endurecer o modelo existente em PostgreSQL proprio, mantendo RLS como barreira primaria e adicionando filtros em repositorios como defesa em profundidade.
 
 ## Tabelas tipadas
 
@@ -78,13 +78,15 @@ Essas tabelas misturam eventos globais/plataforma com eventos de tenant. A migra
 3. WAHA global webhook resolve org por `waha_session_name`; colisao ou sessao nao registrada pode causar aceite sem persistencia.
 4. WAHA token webhook resolve org por `webhook_path_token`; token e HMAC sao fontes confiaveis, nao o body.
 5. `api_audit_log`, `incidents` e `webhook_events_log` permitem `organization_id` nulo; qualquer listagem deve separar plataforma de tenant.
-6. Realtime depende da RLS Supabase. Ao sair do Supabase, o servidor WebSocket precisara aplicar o mesmo filtro de org por conexao.
+6. Realtime depende da RLS Supabase. Ao sair do Supabase, o servidor WebSocket precisara aplicar o mesmo filtro de org por conexao e tambem depender de policies RLS no banco para leituras/escritas.
 7. MCP e AI runtime usam admin client e contexto `organization_id`; qualquer tool que aceite IDs deve validar que o recurso pertence ao tenant do token.
 8. Idempotencia deve continuar sempre composta por tenant quando envolver evento externo: ex. `unique (organization_id, external_id)`.
 
 ## Contexto transacional recomendado para Postgres proprio
 
-Antes de substituir Supabase, criar uma camada que carregue e propague:
+O PostgreSQL proprio deve continuar usando RLS. Repositorios com filtros explicitos por `organization_id` sao uma segunda camada de defesa, nao substitutos da RLS.
+
+Antes de substituir Supabase, criar uma camada que carregue e propague contexto transacional. Cada request, job, webhook, worker, cron e script operacional deve abrir uma transacao e executar `SET LOCAL` para os valores de escopo:
 
 - `actor_user_id`
 - `actor_type`
@@ -94,7 +96,25 @@ Antes de substituir Supabase, criar uma camada que carregue e propague:
 - `request_id`
 - `source` (`web`, `api_token`, `webhook`, `cron`, `worker`, `script`)
 
-Essa camada deve ser obrigatoria em repositorios tenant-aware e deve impedir query sem escopo por default.
+Variaveis sugeridas:
+
+```sql
+set local app.user_id = '<uuid>';
+set local app.organization_id = '<uuid>';
+set local app.role = 'admin';
+set local app.actor_type = 'user';
+set local app.request_id = '<uuid>';
+```
+
+Policies devem consultar `current_setting(..., true)`, por exemplo:
+
+```sql
+current_setting('app.organization_id', true)::uuid
+current_setting('app.user_id', true)::uuid
+current_setting('app.role', true)
+```
+
+Essa camada deve ser obrigatoria em repositorios tenant-aware e deve impedir query sem escopo por default. Mesmo quando um repositorio filtrar `organization_id`, a policy RLS deve continuar rejeitando acesso se o contexto transacional estiver ausente, incoerente ou insuficiente.
 
 ## Primeira fatia de implementacao recomendada
 
@@ -102,16 +122,15 @@ Essa camada deve ser obrigatoria em repositorios tenant-aware e deve impedir que
 2. `users`: substituir dependencia direta de `auth.users` por tabela/app model proprio.
 3. `memberships`: portar `user_organizations`, roles e accepted/revoked state.
 4. `platform_admins`: manter separado, com MFA obrigatorio.
-5. `transaction_context`: helper server-side para resolver org ativa e aplicar filtro.
+5. `transaction_context`: helper server-side para resolver org ativa, abrir transacao e aplicar `SET LOCAL`.
 6. Testes de isolamento: dois tenants, usuarios cruzados, platform admin, service worker e API token.
 7. So depois migrar `contacts`, `conversations`, `messages` e `channel_sessions`.
 
 ## Complexidade relativa
 
 - Fundacao org/users/memberships/contexto: alta.
-- Portar policies RLS para repositorios/testes: alta.
+- Portar policies RLS para `current_setting()` + repositorios/testes: alta.
 - CRM core (`contacts`, `conversations`, `messages`): alta.
 - Catalogos globais (`ai_models`, `ai_pricing`): baixa.
 - Audit/event log: media-alta por volume e por `organization_id` nullable.
 - Admin console: media-alta por acesso transversal intencional.
-

@@ -202,11 +202,12 @@ Kit HostGator:
 
 ## Ordem de migracao sugerida
 
-1. Fixar baseline reproduzivel em Linux com pnpm 9, invariantes SQL e build.
+1. Fixar baseline reproduzivel em Linux com Node 20 + pnpm 9.15.9, invariantes SQL e build.
 2. Criar testes de caracterizacao para Auth/RBAC/MFA/RLS e service-role filtering.
-3. Extrair camada de repositorios/transaction context sem trocar banco ainda.
-4. Portar funcoes SQL criticas para Postgres proprio mantendo assinaturas.
-5. Substituir Auth Supabase por modelo proprio/adapter, preservando MFA/recovery.
-6. Substituir Realtime e Storage.
-7. So entao remover pacotes/imports Supabase.
-
+3. Introduzir contexto transacional + RLS em PostgreSQL proprio, usando `SET LOCAL` e policies baseadas em `current_setting(..., true)`.
+4. Validar Meta API em laboratorio isolado antes de congelar interfaces.
+5. Definir interfaces comuns de mensageria/provisionamento (`MessagingProvider` e `ChannelProvisioner`).
+6. Portar funcoes SQL criticas para Postgres proprio mantendo assinaturas.
+7. Substituir Auth Supabase por modelo proprio/adapter, preservando MFA/recovery.
+8. Substituir Realtime e Storage.
+9. So entao remover pacotes/imports Supabase.
