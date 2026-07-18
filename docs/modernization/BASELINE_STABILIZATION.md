@@ -20,6 +20,9 @@ O projeto agora declara `packageManager: pnpm@9.15.9`, alinhado ao Dockerfile. A
 - `.gitattributes`: adiciona `*.sh text eol=lf`.
 - `package.json`: adiciona `packageManager` e faz `db:migrate` falhar explicitamente enquanto nao houver runner real.
 - `.github/workflows/ci.yml`: fixa pnpm `9.15.9` e adiciona jobs separados para invariantes SQL e build.
+- `.github/workflows/perf.yml`: usa `packageManager` como fonte unica de pnpm e executa build com `SENTRY_DSN=off`.
+- `.github/workflows/arm64-proof.yml`: adiciona prova nativa ARM64 sem QEMU, sem GHCR e sem push.
+- `.github/workflows/publish-image.yml`: remove publicacao automatica em push para `main`.
 - Shell scripts: renormalizados para LF no working tree. `git diff --ignore-space-at-eol -- '*.sh'` nao mostrou alteracao de conteudo.
 - `docs/modernization/BASELINE_STABILIZATION.md`: este relatorio.
 
@@ -71,7 +74,7 @@ docker buildx build --platform linux/arm64 -t deskcommcrm:baseline-arm64 --load 
 | `db:migrate` | Verde como hardening | Retorna exit code 1 com mensagem explicita, removendo falso sucesso. |
 | Docker `linux/amd64` | Verde | Imagem `deskcommcrm:baseline-amd64`, ID `sha256:99385c6c94419f16ac4cfc094be4874d5e63554d137f0409d3819754f6b59b5d`, tamanho local 378MB. |
 | Smoke container `linux/amd64` | Parcial verde | Next iniciou e escutou em `3000`; `/api/v1/health` retornou `503` com placeholders, esperado sem infraestrutura real. |
-| Docker `linux/arm64` | Bloqueado por builder local | Falha antes da instalacao de dependencias com `exec /bin/sh: exec format error`; nao caracteriza incompatibilidade do codigo. |
+| Docker `linux/arm64` | Verde em runner ARM64 nativo | `ubuntu-24.04-arm`, `uname -m=aarch64`, Docker server `arm64`; build nativo e smoke passaram. |
 
 ## Invariantes SQL
 
@@ -102,7 +105,7 @@ Nao houve evidencia de dependencia de segredo real durante o build. Foram usadas
 
 ## ARM64
 
-O builder `buildx` reporta suporte a `linux/amd64` e `linux/arm64`, mas o build `linux/arm64` falhou ao executar comandos simples em stages Alpine:
+O builder local `buildx` reportou suporte a `linux/amd64` e `linux/arm64`, mas o build local `linux/arm64` falhou ao executar comandos simples em stages Alpine:
 
 ```text
 exec /bin/sh: exec format error
@@ -114,41 +117,59 @@ O lockfile contem variantes arm64/musl ou arm64/gnu para dependencias nativas re
 
 Proxima verificacao recomendada: repetir a prova em GitHub Actions com QEMU/Buildx ou em host ARM64 nativo antes de concluir compatibilidade com Oracle ARM64.
 
+A prova foi repetida no GitHub Actions em runner nativo `ubuntu-24.04-arm`, sem QEMU e sem publicacao de imagem:
+
+- `uname -m=aarch64`.
+- Docker server `arm64`.
+- `docker build -t deskcommcrm:ci-arm64 .` passou.
+- O container iniciou e aceitou conexoes na porta `3000`.
+- `/api/v1/health` retornou HTTP `503` somente porque Supabase, Redis e WAHA foram placeholders no smoke.
+
+Conclusao: a imagem do app foi construida e iniciou em ARM64 nativo. O erro local anterior fica classificado como falha de binfmt/QEMU do builder local, nao como incompatibilidade do codigo.
+
 ## CI
 
 O workflow de CI foi ajustado por leitura e diff para:
 
 - Node 20.
-- pnpm 9.15.9.
+- pnpm via `packageManager: pnpm@9.15.9` como fonte unica.
 - install frozen.
 - `typecheck`, `lint`, `test:unit`.
 - invariantes SQL em job separado.
 - build em job separado.
+- `SENTRY_DSN=off` nos builds de CI/performance.
 
 Actions esta habilitado no fork. Nenhuma configuracao do GitHub foi alterada automaticamente.
 
-Os workflows precisam executar no Draft PR antes da aprovacao desta fase. O ajuste local do arquivo nao substitui evidencia de run no GitHub.
+Checks executados no Draft PR:
+
+- `verify`: pass, `1m10s`.
+- `db-invariants`: pass, `48s`.
+- `build`: pass, `2m27s`.
+- `build-and-size`: pass, `2m18s`.
+- `build-and-smoke`: pass, `3m49s`.
 
 ## Publicacao
 
 `publish-image.yml` nao foi acionado nesta fase. Nao houve `workflow_dispatch`, tag, release ou push para `main`.
 
-Risco observado: o workflow ainda publica GHCR em push para `main` e atualmente usa apenas `linux/amd64`. Antes de merges futuros que possam tocar Docker/publicacao, recomenda-se separar publicacao de CI ou remover publicacao automatica em todo push para `main`, alem de planejar tags multi-arch `linux/amd64` e `linux/arm64`.
+Push para `main` deixou de publicar imagem. A publicacao agora exige tag `v*`, release `published` ou acionamento manual por `workflow_dispatch`.
+
+O release workflow continua `linux/amd64` apenas. Antes da primeira publicacao para producao, ele devera virar multiarch com `linux/amd64` e `linux/arm64`.
 
 ## Recomendacao
 
-Ainda nao iniciar a Fase 1.
+Fase 0.5 aprovada apos merge deste PR.
 
-Gates verdes: typecheck, lint, unit, build, invariantes no comportamento atual, Docker amd64 e smoke parcial amd64.
+Gates verdes: typecheck, lint, unit, build, performance build, invariantes no comportamento atual, Docker amd64, smoke parcial amd64, build ARM64 nativo e smoke ARM64.
 
-Pendencias antes de aprovar a Fase 0.5:
+Limitacao legada aceita:
 
-- Draft PR precisa executar os novos jobs de CI.
-- Prova ARM64 precisa ser repetida em GitHub Actions com QEMU/Buildx ou host ARM64 nativo.
 - O baseline SQL legado fica documentado como nao idempotente e nao deve ser promovido como mecanismo futuro de migration.
+- Essa limitacao nao bloqueia a modernizacao porque `baseline.sql` nao sera o migration runner da arquitetura nova.
 
 Proxima fatia recomendada antes da Fase 1:
 
-1. Validar o novo CI no Draft PR sem acionar publicacao de imagem.
-2. Executar a prova ARM64 em ambiente com QEMU/Buildx funcional ou host ARM64 nativo.
-3. Na fase arquitetural, substituir o baseline legado por migrations incrementais, versionadas e transacionais.
+1. Fazer merge deste PR apos revisao final.
+2. Abrir a Fase 1 com ADR da arquitetura, contexto transacional, RLS preservado e testes de isolamento.
+3. Substituir o baseline legado por migrations incrementais, versionadas e transacionais.
