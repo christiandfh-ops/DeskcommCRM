@@ -1,0 +1,96 @@
+name: arm64-proof
+
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - package.json
+      - pnpm-lock.yaml
+      - next.config.ts
+      - app/**
+      - components/**
+      - lib/**
+      - public/**
+      - .github/workflows/arm64-proof.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify native ARM64 runner
+        run: |
+          set -euo pipefail
+          machine="$(uname -m)"
+          docker_arch="$(docker version --format '{{.Server.Arch}}')"
+          echo "uname -m=$machine"
+          echo "docker server arch=$docker_arch"
+          case "$machine" in
+            aarch64|arm64) ;;
+            *) echo "Expected ARM64 runner, got $machine" >&2; exit 1 ;;
+          esac
+          case "$docker_arch" in
+            arm64|aarch64) ;;
+            *) echo "Expected ARM64 Docker server, got $docker_arch" >&2; exit 1 ;;
+          esac
+
+      - name: Build image
+        run: docker build -t deskcommcrm:ci-arm64 .
+
+      - name: Smoke container
+        run: |
+          set -euo pipefail
+          name="deskcomm-arm64-smoke"
+          cleanup() {
+            docker logs "$name" 2>/dev/null || true
+            docker rm -f "$name" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run -d --name "$name" \
+            -e NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co \
+            -e NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder \
+            -e SUPABASE_SERVICE_ROLE_KEY=placeholder \
+            -e INTERNAL_SECRET=placeholder \
+            -e CPF_ENCRYPTION_KEY=placeholder \
+            -e WAHA_BYO_ENCRYPTION_KEY=placeholder \
+            -e AI_CRED_AES_KEY=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+            -e WAHA_API_BASE_URL=http://waha:3000 \
+            -e WAHA_API_KEY=placeholder \
+            -e WAHA_WEBHOOK_BASE_URL=http://app:3000 \
+            -e UPSTASH_REDIS_REST_URL=http://srh:80 \
+            -e UPSTASH_REDIS_REST_TOKEN=placeholder \
+            -e SENTRY_DSN=off \
+            -e NEXT_TELEMETRY_DISABLED=1 \
+            deskcommcrm:ci-arm64
+
+          for attempt in $(seq 1 60); do
+            if docker exec "$name" node -e "require('net').connect(3000, '127.0.0.1').on('connect', () => process.exit(0)).on('error', () => process.exit(1))"; then
+              echo "Port 3000 is accepting connections"
+              break
+            fi
+            if [ "$attempt" -eq 60 ]; then
+              echo "Server did not start on port 3000" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+
+          docker exec "$name" node -e "fetch('http://127.0.0.1:3000/api/v1/health').then(async r => { console.log('health status=' + r.status); console.log((await r.text()).slice(0, 500)); }).catch(e => { console.error(e); process.exit(1); })"
+
+      - name: Report image
+        if: always()
+        run: |
+          {
+            echo "## ARM64 image"
+            docker image inspect deskcommcrm:ci-arm64 --format '- ID: {{.Id}}' 2>/dev/null || true
+            docker image inspect deskcommcrm:ci-arm64 --format '- Architecture: {{.Architecture}}' 2>/dev/null || true
+            docker image inspect deskcommcrm:ci-arm64 --format '- Size bytes: {{.Size}}' 2>/dev/null || true
+            docker images deskcommcrm:ci-arm64 --format '- Local size: {{.Size}}' 2>/dev/null || true
+          } >> "$GITHUB_STEP_SUMMARY"
