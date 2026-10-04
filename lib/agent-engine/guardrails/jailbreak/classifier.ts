@@ -139,6 +139,10 @@ export async function classifyJailbreak(
         ...(ids.leadId != null ? { leadId: ids.leadId } : {}),
         ...(ids.jobId !== undefined ? { jobId: ids.jobId } : {}),
         purpose: 'jailbreak_detect',
+        // Veredito curto e estruturado: impede que um modelo de raciocínio do
+        // roteador gratuito transforme um classificador auxiliar em uma resposta
+        // de centenas/milhares de tokens.
+        maxOutputTokens: 256,
         ...(args.model !== undefined ? { model: args.model } : {}),
         ...(args.llmOverride !== undefined ? { llmOverride: args.llmOverride } : {}),
         messages: [{ role: 'user', content: buildJailbreakMessage(args.message) }],

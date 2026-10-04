@@ -1,0 +1,155 @@
+services:
+  app:
+    image: ${APP_IMAGE:-ghcr.io/melgarafael/deskcommcrm:stable}
+    platform: linux/arm64
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      SUPABASE_SERVER_URL: ${SUPABASE_SERVER_URL}
+      SUPABASE_DB_URL: ${SUPABASE_DB_URL}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      DOMAIN: ${DOMAIN}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      INTERNAL_CRON_SECRET: ${INTERNAL_CRON_SECRET}
+      CPF_ENCRYPTION_KEY: ${CPF_ENCRYPTION_KEY}
+      WAHA_BYO_ENCRYPTION_KEY: ${WAHA_BYO_ENCRYPTION_KEY}
+      AI_CRED_AES_KEY: ${AI_CRED_AES_KEY}
+      WAHA_API_BASE_URL: ${WAHA_API_BASE_URL}
+      WAHA_API_KEY: ${WAHA_API_KEY}
+      WAHA_WEBHOOK_BASE_URL: ${WAHA_WEBHOOK_BASE_URL}
+      WAHA_HMAC_SECRET: ${WAHA_HMAC_SECRET}
+      WAHA_WEBHOOK_REQUIRE_SIGNATURE: ${WAHA_WEBHOOK_REQUIRE_SIGNATURE}
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN}
+      SENTRY_DSN: ${SENTRY_DSN}
+      NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
+      APP_NAME: ${APP_NAME}
+      APP_LOCALE: ${APP_LOCALE}
+      SIGNUP_MODE: ${SIGNUP_MODE}
+      AI_GATEWAY_API_KEY: ${AI_GATEWAY_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - require('net').connect(3000,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      redis:
+        condition: service_healthy
+      srh:
+        condition: service_started
+    networks:
+      - default
+      - supabase_private
+      - dokploy-network
+    labels:
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-web.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-web.entrypoints=web
+      - traefik.http.services.${COMPOSE_PROJECT_NAME}-web.loadbalancer.server.port=3000
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-web.service=${COMPOSE_PROJECT_NAME}-web
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-web.middlewares=redirect-to-https@file
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-websecure.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-websecure.entrypoints=websecure
+      - traefik.http.services.${COMPOSE_PROJECT_NAME}-websecure.loadbalancer.server.port=3000
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-websecure.service=${COMPOSE_PROJECT_NAME}-websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}-websecure.tls.certresolver=letsencrypt
+      - traefik.enable=true
+
+  # Processo 24/7 do agent-engine: fila, follow-ups e turnos reais do agente.
+  # Sem este serviço o painel de teste pode responder, mas o WhatsApp não tem o
+  # cérebro assíncrono que consome a fila em produção.
+  worker:
+    image: ${WORKER_IMAGE:?Defina WORKER_IMAGE com a imagem publicada do worker}
+    platform: linux/arm64
+    restart: unless-stopped
+    mem_limit: 512m
+    env_file:
+      - .env
+    environment:
+      WAHA_API_BASE_URL: http://waha:3000
+      SUPABASE_DB_ADMIN_URL: ""
+    depends_on:
+      redis:
+        condition: service_healthy
+      srh:
+        condition: service_started
+      waha:
+        condition: service_started
+    networks:
+      - default
+      - supabase_private
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --quiet
+        - --tries=1
+        - --spider
+        - http://127.0.0.1:8787/healthz
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - no
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 10s
+      timeout: 3s
+      retries: 5
+  srh:
+    image: hiett/serverless-redis-http@sha256:5b0bb9239fce53abf87b2018a7a0deb9ec7bd900c5360738fe5fbeeb426f9150
+    restart: unless-stopped
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: ${SRH_TOKEN}
+      SRH_CONNECTION_STRING: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+  waha:
+    image: ${WAHA_IMAGE}
+    platform: linux/arm64
+    restart: unless-stopped
+    mem_limit: 1280m
+    environment:
+      WAHA_API_KEY: sha512:${WAHA_API_KEY_SHA512}
+      WHATSAPP_HOOK_URL: http://app:3000/api/v1/webhooks/waha/e7361811f9c444c3bcc499a8ba95aebc
+      WHATSAPP_HOOK_EVENTS: message.any,message.ack,message.edited,message.revoked,session.status,state.change
+      WHATSAPP_HOOK_HMAC: ${WAHA_HMAC_SECRET}
+      WHATSAPP_DEFAULT_ENGINE: ${WHATSAPP_DEFAULT_ENGINE}
+      WAHA_DASHBOARD_ENABLED: "false"
+      WHATSAPP_RESTART_ALL_SESSIONS: ${WHATSAPP_RESTART_ALL_SESSIONS}
+    volumes:
+      - waha-data:/app/.sessions
+      - waha-media:/app/.media
+networks:
+  supabase_private:
+    external: true
+    name: deskcomm-supabase-mchj1y_default
+  dokploy-network:
+    external: true
+volumes:
+  waha-data: null
+  waha-media: null

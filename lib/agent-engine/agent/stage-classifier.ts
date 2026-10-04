@@ -129,6 +129,11 @@ export async function classifyStage(
         leadId: ids.leadId,
         ...(ids.jobId !== undefined ? { jobId: ids.jobId } : {}),
         purpose: 'stage_classifier',
+        // O classificador só precisa devolver UM nome de estágio. Roteadores
+        // gratuitos podem escolher modelos de raciocínio e consumir milhares de
+        // tokens antes de escrever essa palavra; o teto mantém o auxiliar barato
+        // sem alterar o contrato (saída truncada simplesmente degrada para null).
+        maxOutputTokens: 256,
         ...(args.model !== undefined ? { model: args.model } : {}),
         ...(args.llmOverride !== undefined ? { llmOverride: args.llmOverride } : {}),
         messages: [

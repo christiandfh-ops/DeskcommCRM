@@ -73,6 +73,22 @@ describe('preview policy shares gates and contains side effects', () => {
     expect(p.result.impediments[0]?.code).toBe(evaluateBeforeSend(ctx).veto?.code);
     expect(spy).not.toHaveBeenCalled();
   });
+  it('shows the sandbox candidate outside the send window while preserving the veto', async () => {
+    const p = preview(),
+      ctx: GateContext = {
+        ...gate(),
+        now: new Date('2026-09-07T05:00:00Z'),
+        messagingWindow: { lastInboundAt: new Date('2026-09-07T04:00:00Z') },
+      },
+      spy = vi.fn();
+    expect(evaluateBeforeSend(ctx).veto?.code).toBe('outside_window');
+    const tools = applyPreviewPolicy({ send_message: definition(spy) }, p, ctx, () => []);
+    const outcome = await execute(tools, 'send_message', { body: ctx.body });
+    expect(spy).not.toHaveBeenCalled();
+    expect(outcome).toMatchObject({ ok: true, status: 'simulated_blocked' });
+    expect(p.result.candidates[0]?.body).toBe(ctx.body);
+    expect(p.result.impediments[0]?.code).toBe('outside_window');
+  });
   it('keeps knowledge reads real and preserves independently generated citations', async () => {
     const read = vi.fn(async () => ({
         ok: true,

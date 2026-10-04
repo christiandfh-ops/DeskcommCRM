@@ -140,6 +140,10 @@ export async function classifyPromise(
       ...(ids.leadId != null ? { leadId: ids.leadId } : {}),
       ...(ids.jobId !== undefined ? { jobId: ids.jobId } : {}),
       purpose: "promise_semantic",
+      // O retorno é um JSON pequeno (boolean + trecho suspeito). Um teto explícito
+      // evita raciocínio verboso dos modelos roteados sem sacrificar a frase que
+      // o gate precisa devolver ao conversador.
+      maxOutputTokens: 384,
       ...(args.model !== undefined ? { model: args.model } : {}),
       ...(args.llmOverride !== undefined ? { llmOverride: args.llmOverride } : {}),
       ...(args.commercialEvidence?.length ? { system: INSTRUCAO_COM_EVIDENCIAS } : {}),

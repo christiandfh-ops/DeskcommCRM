@@ -183,6 +183,23 @@ export function applyPreviewPolicy(
               });
               if (result.veto) {
                 p.result.impediments.push({ code: result.veto.code, message: result.veto.message });
+                // O sandbox precisa responder à pergunta "o que a Sofia diria?" mesmo
+                // quando a PRODUÇÃO não poderia enviar naquele instante. A janela
+                // horária continua registrada como impedimento, mas não força o
+                // modelo a reescrever/agendar e esconder a candidata do operador.
+                if (p.kind === 'sandbox' && result.veto.code === 'outside_window') {
+                  p.result.candidates.push({
+                    body: result.body,
+                    citations: citations(),
+                    trace: result.trace,
+                  });
+                  return {
+                    ok: true,
+                    status: 'simulated_blocked',
+                    message:
+                      'Resposta simulada. Em produção, o horário atual bloquearia o envio; nenhuma mensagem foi enviada.',
+                  };
+                }
                 return {
                   ok: false,
                   error: { code: result.veto.code, message: result.veto.message },
