@@ -79,6 +79,35 @@ async function atualizarRun(
   }
 }
 
+interface PreviewUsage {
+  tokensIn: number;
+  tokensOut: number;
+  costCents: number;
+}
+
+async function carregarUsoDoPreview(
+  admin: ReturnType<typeof createAdminClient>,
+  runId: string,
+): Promise<PreviewUsage | null> {
+  try {
+    const { data, error } = await admin
+      .from("llm_calls")
+      .select("input_tokens, output_tokens, cost_cents")
+      .eq("preview_run_id", runId);
+    if (error) return null;
+    return (data ?? []).reduce<PreviewUsage>(
+      (acc, row) => ({
+        tokensIn: acc.tokensIn + Number(row.input_tokens ?? 0),
+        tokensOut: acc.tokensOut + Number(row.output_tokens ?? 0),
+        costCents: acc.costCents + Number(row.cost_cents ?? 0),
+      }),
+      { tokensIn: 0, tokensOut: 0, costCents: 0 },
+    );
+  } catch {
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
   const supportDenied = await requireSupportWrite();
   if (supportDenied) return supportDenied;
@@ -159,12 +188,20 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       channelId: version.channel_session_id,
     });
     const finalText = result.candidates.map((c) => c.body).join("\n\n");
+    const usage = await carregarUsoDoPreview(admin, runRow.id);
     resultPayload = {
       run_id: runRow.id,
       status: result.candidates.length ? "ok" : "blocked",
       latency_ms: Date.now() - startedAt.getTime(),
       final_text: finalText,
       tool_calls: result.proposals,
+      ...(usage
+        ? {
+            tokens_in: usage.tokensIn,
+            tokens_out: usage.tokensOut,
+            cost_cents: usage.costCents,
+          }
+        : {}),
       ...result,
       stub: process.env.INTERNAL_AGENT_RUN_STUB === "true",
       guardrails: avaliarRespostaDeTeste(finalText),
@@ -180,12 +217,13 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       status: "completed",
       completed_at: new Date().toISOString(),
       latency_ms: Date.now() - startedAt.getTime(),
-      // `steps_count`, `tokens_in`, `tokens_out` e `cost_cents` seguem em zero
-      // de propósito: o turno de prévia não devolve essas contagens à rota, e
-      // gravar `candidates.length` no lugar de passos seria um número errado com
-      // cara de certo. Quem tem o dado é `llm_calls` (`purpose='agent_preview'`),
-      // e ligar as duas é trabalho à parte — não se conserta um zero honesto com
-      // um palpite.
+      ...(usage
+        ? {
+            tokens_in: usage.tokensIn,
+            tokens_out: usage.tokensOut,
+            cost_cents: usage.costCents,
+          }
+        : {}),
       tool_calls: JSON.parse(JSON.stringify(result.proposals)),
     });
   } catch (err) {

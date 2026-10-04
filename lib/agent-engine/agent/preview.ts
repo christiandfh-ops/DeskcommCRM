@@ -151,6 +151,9 @@ export function applyPreviewPolicy(
   semanticClassifier?: (body: string) => Promise<NonNullable<GateContext['semanticPromise']>>,
   liveContext?: () => Partial<GateContext>,
 ): ToolSet {
+  // Evita duas candidatas quando o modelo emite mais de um send_message no
+  // mesmo step. A reserva acontece antes de qualquer await do guardrail.
+  let sandboxSendClaimed = false;
   return Object.fromEntries(
     Object.entries(tools).map(([name, definition]) => {
       const nativeRead = [
@@ -171,6 +174,16 @@ export function applyPreviewPolicy(
           ...definition,
           execute: async (args: unknown) => {
             if (name === 'send_message') {
+              if (p.kind === 'sandbox') {
+                if (sandboxSendClaimed) {
+                  return {
+                    ok: true,
+                    status: 'already_simulated',
+                    message: 'Uma resposta já foi aceita nesta prévia. Encerre o turno.',
+                  };
+                }
+                sandboxSendClaimed = true;
+              }
               const body =
                 args && typeof args === 'object' && 'body' in args && typeof args.body === 'string'
                   ? args.body
@@ -200,6 +213,7 @@ export function applyPreviewPolicy(
                       'Resposta simulada. Em produção, o horário atual bloquearia o envio; nenhuma mensagem foi enviada.',
                   };
                 }
+                if (p.kind === 'sandbox') sandboxSendClaimed = false;
                 return {
                   ok: false,
                   error: { code: result.veto.code, message: result.veto.message },

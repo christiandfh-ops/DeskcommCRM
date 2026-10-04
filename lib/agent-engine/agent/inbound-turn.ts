@@ -4270,7 +4270,7 @@ async function executarTurnoDoAgente(
         // Rascunho: a resposta é o send_message ACEITO; a etapa seguinte só
         // "encerrava". Aceito, e não chamado: o envio vetado pela cadeia
         // before_send volta ao modelo para ele reescrever (o 1º veto ensina).
-        ...(preview?.kind === 'assisted'
+        ...(preview
           ? { pararQuando: () => preview.result.candidates.length > 0 }
           : {}),
         ...(agentConfig !== null
@@ -4401,14 +4401,10 @@ async function executarTurnoDoAgente(
           message: 'O agente não propôs uma resposta. Revise o cenário ou a configuração.',
         });
     };
-    // ⚠️ RASCUNHO (modo assistido) não fecha o turno com checkpoint. O checkpoint
-    // da prévia não é gravado (a prévia retorna antes do `insertCheckpoint`, logo
-    // abaixo) e o `reply-drafts.ts` não o lê — só a prévia de TESTE (sandbox) o
-    // mostra na tela. Mesmo assim, a chamada de fechamento segurava a entrega do
-    // rascunho: medido em produção (gpt-6-luna, 2026-09-24), resposta pronta às
-    // 12:32:40 e rascunho entregue às 12:32:56 — 16 dos 28 s que o operador
-    // esperava depois de clicar em "Sugerir resposta".
-    if (preview?.kind === 'assisted') {
+    // Prévia não persiste checkpoint. A tela de teste também não o exibe,
+    // portanto não há motivo para gastar uma segunda chamada LLM no fechamento.
+    // Produção continua gerando e persistindo checkpoint normalmente.
+    if (preview) {
       avisarSemCandidato(preview);
       return;
     }
@@ -4451,12 +4447,6 @@ async function executarTurnoDoAgente(
         text.replace(/https:\/\/meet\.google\.com\/[a-zA-Z0-9-]+/g, '[link da reunião disponível na Agenda]'),
       log: runLog,
     });
-
-    if (preview) {
-      preview.result.checkpoint = content;
-      avisarSemCandidato(preview);
-      return;
-    }
 
     // Wave 3 (2.4): o checkpoint anterior é lido ANTES de gravar o novo — a
     // timeline recebe o DIFF, nunca o snapshot. Emitir a cada turno encheria a

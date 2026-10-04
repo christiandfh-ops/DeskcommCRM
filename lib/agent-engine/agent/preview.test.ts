@@ -89,6 +89,21 @@ describe('preview policy shares gates and contains side effects', () => {
     expect(p.result.candidates[0]?.body).toBe(ctx.body);
     expect(p.result.impediments[0]?.code).toBe('outside_window');
   });
+  it('keeps one sandbox candidate when send_message is called twice', async () => {
+    const p = preview(),
+      ctx: GateContext = {
+        ...gate(),
+        now: new Date('2026-09-07T05:00:00Z'),
+        messagingWindow: { lastInboundAt: new Date('2026-09-07T04:00:00Z') },
+      };
+    const tools = applyPreviewPolicy({ send_message: definition(vi.fn()) }, p, ctx, () => []);
+    const first = execute(tools, 'send_message', { body: 'Primeira resposta' });
+    const second = execute(tools, 'send_message', { body: 'Segunda resposta' });
+    const outcomes = await Promise.all([first, second]);
+    expect(p.result.candidates).toHaveLength(1);
+    expect(p.result.candidates[0]?.body).toBe('Primeira resposta');
+    expect(outcomes[1]).toMatchObject({ ok: true, status: 'already_simulated' });
+  });
   it('keeps knowledge reads real and preserves independently generated citations', async () => {
     const read = vi.fn(async () => ({
         ok: true,
