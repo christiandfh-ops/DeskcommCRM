@@ -249,22 +249,39 @@ export function esforcoDeRaciocinioOpenRouter(
   return v as EsforcoDeRaciocinioOpenRouter;
 }
 
-function comEsforcoDeRaciocinioOpenRouter(
+export function comEsforcoDeRaciocinioOpenRouter(
   inner: typeof fetch,
   esforco: EsforcoDeRaciocinioOpenRouter,
 ): typeof fetch {
-  return (input, init) => {
+  return async (input, init) => {
     const corpo = init?.body;
-    if (typeof corpo === 'string') {
-      try {
-        const json = JSON.parse(corpo) as Record<string, unknown>;
-        return inner(input, {
-          ...init,
-          body: JSON.stringify({ ...json, reasoning_effort: esforco }),
-        });
-      } catch {
-        // Corpo não-JSON: tuning nunca pode derrubar a chamada.
-      }
+    if (typeof corpo !== 'string') return inner(input, init);
+    let json: Record<string, unknown>;
+    try {
+      json = JSON.parse(corpo) as Record<string, unknown>;
+    } catch {
+      // Corpo não-JSON: tuning nunca pode derrubar a chamada.
+      return inner(input, init);
+    }
+
+    const resposta = await inner(input, {
+      ...init,
+      body: JSON.stringify({ ...json, reasoning_effort: esforco }),
+    });
+    if (resposta.status !== 400 || esforco !== 'none') return resposta;
+
+    // openrouter/free escolhe o modelo a cada chamada. Alguns endpoints
+    // gratuitos exigem reasoning e recusam none; outros aceitam. Nesse caso
+    // específico, retry uma vez sem o knob preserva disponibilidade sem esconder
+    // erros 400 de outra natureza.
+    let erro = '';
+    try {
+      erro = await resposta.clone().text();
+    } catch {
+      return resposta;
+    }
+    if (!/reasoning.{0,80}(mandatory|required|cannot be disabled)/i.test(erro)) {
+      return resposta;
     }
     return inner(input, init);
   };

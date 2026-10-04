@@ -225,7 +225,10 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
         ? {
             tokens_in: usage.tokensIn,
             tokens_out: usage.tokensOut,
-            cost_cents: usage.costCents,
+            // ai_agent_runs.cost_cents é NOT NULL por contrato histórico.
+            // Quando o ledger llm_calls não conhece o preço, omita o resumo
+            // em vez de mentir com zero ou quebrar o fechamento do run.
+            ...(usage.costCents !== null ? { cost_cents: usage.costCents } : {}),
           }
         : {}),
       tool_calls: JSON.parse(JSON.stringify(result.proposals)),
