@@ -148,6 +148,16 @@ describe("llmEdgeConfigFromEnv — o que sai do .env chega ao turno", () => {
     expect(cfg.openaiApiKey).toBe("sk-proj-y");
   });
 
+  it("leva o tuning de raciocínio da OpenRouter sem ligar nada por default", () => {
+    expect(llmEdgeConfigFromEnv({ OPENROUTER_REASONING_EFFORT: "none" }).openrouterReasoningEffort).toBe("none");
+    expect(llmEdgeConfigFromEnv({ OPENROUTER_REASONING_EFFORT: "" })).not.toHaveProperty(
+      "openrouterReasoningEffort",
+    );
+    expect(() => llmEdgeConfigFromEnv({ OPENROUTER_REASONING_EFFORT: "turbo" })).toThrow(
+      /OPENROUTER_REASONING_EFFORT/,
+    );
+  });
+
   it("o caminho inteiro: chave do .env resolve um modelo OpenAI numa org sem BYOK", async () => {
     const cfg = llmEdgeConfigFromEnv({ OPENAI_API_KEY: "sk-proj-do-env" });
     const out = await resolveOrgLlmConfig(

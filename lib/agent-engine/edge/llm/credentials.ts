@@ -26,7 +26,7 @@ import {
   type ChaveDeOrcamento,
   type ModoDeOrcamento,
 } from './orcamento';
-import type { RaciocinioDeepseek } from './providers';
+import type { EsforcoDeRaciocinioOpenRouter, RaciocinioDeepseek } from './providers';
 import type { CacheTtl } from './stable-prefix';
 
 /** Config da camada LLM montada do env validado (padrão crmEdgeConfigFromEnv). */
@@ -61,6 +61,8 @@ export interface LlmEdgeConfig {
    * DeepSeek lê este valor; os outros provedores não passam por essa fábrica.
    */
   deepseekThinking?: RaciocinioDeepseek;
+  /** Esforço de raciocínio pedido ao OpenRouter; ausente preserva o default do router. */
+  openrouterReasoningEffort?: EsforcoDeRaciocinioOpenRouter;
   /**
    * `AI_BUDGET_ENFORCEMENT` já normalizado — o kill switch do operador da
    * instalação. Ausente = `'on'`, e `'on'` NÃO LIGA NADA: significa apenas
@@ -93,6 +95,7 @@ export function llmEdgeConfigFromEnv(env: {
   LLM_CACHE_TTL?: string;
   AI_BUDGET_ENFORCEMENT?: string;
   DEEPSEEK_THINKING?: string;
+  OPENROUTER_REASONING_EFFORT?: string;
 }): LlmEdgeConfig {
   const ttl = env.LLM_CACHE_TTL ?? '1h';
   if (ttl !== '5m' && ttl !== '1h') {
@@ -102,12 +105,24 @@ export function llmEdgeConfigFromEnv(env: {
   if (raciocinio !== 'provider' && raciocinio !== 'disabled') {
     throw new Error("DEEPSEEK_THINKING inválido — use 'provider' ou 'disabled' (default provider)");
   }
+  const openrouterReasoning = env.OPENROUTER_REASONING_EFFORT?.trim().toLowerCase();
+  if (
+    openrouterReasoning &&
+    !['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].includes(openrouterReasoning)
+  ) {
+    throw new Error(
+      'OPENROUTER_REASONING_EFFORT inválido — use none|minimal|low|medium|high|xhigh|max (ou deixe vazio)',
+    );
+  }
   return {
     ...(env.ANTHROPIC_API_KEY ? { anthropicApiKey: env.ANTHROPIC_API_KEY } : {}),
     ...(env.OPENAI_API_KEY ? { openaiApiKey: env.OPENAI_API_KEY } : {}),
     ...(env.OPENROUTER_API_KEY ? { openrouterApiKey: env.OPENROUTER_API_KEY } : {}),
     cacheTtl: ttl,
     deepseekThinking: raciocinio,
+    ...(openrouterReasoning
+      ? { openrouterReasoningEffort: openrouterReasoning as EsforcoDeRaciocinioOpenRouter }
+      : {}),
     // Sem `if` de valor vazio, ao contrário das chaves acima: aqui o ausente
     // TEM um significado ('on'), e o normalizador é quem o dá. Um campo
     // opcional que some faria o seam ter de repetir o default, e dois defaults

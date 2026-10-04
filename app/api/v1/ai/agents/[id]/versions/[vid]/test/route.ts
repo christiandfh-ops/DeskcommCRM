@@ -82,7 +82,8 @@ async function atualizarRun(
 interface PreviewUsage {
   tokensIn: number;
   tokensOut: number;
-  costCents: number;
+  /** null = pelo menos uma chamada sem preço conhecido; nunca inventar custo zero. */
+  costCents: number | null;
 }
 
 async function carregarUsoDoPreview(
@@ -99,7 +100,10 @@ async function carregarUsoDoPreview(
       (acc, row) => ({
         tokensIn: acc.tokensIn + Number(row.input_tokens ?? 0),
         tokensOut: acc.tokensOut + Number(row.output_tokens ?? 0),
-        costCents: acc.costCents + Number(row.cost_cents ?? 0),
+        costCents:
+          acc.costCents === null || row.cost_cents === null
+            ? null
+            : acc.costCents + Number(row.cost_cents),
       }),
       { tokensIn: 0, tokensOut: 0, costCents: 0 },
     );

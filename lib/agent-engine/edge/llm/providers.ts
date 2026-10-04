@@ -212,6 +212,65 @@ function comEsforcoDeRaciocinio(inner: typeof fetch, esforco: EsforcoDeRaciocini
 }
 
 /**
+ * OpenRouter aceita o knob unificado reasoning_effort no Chat Completions.
+ * Ausente = comportamento do provedor/modelo. Em instalações de atendimento
+ * transacional, none evita que modelos gratuitos de raciocínio consumam a
+ * janela inteira antes de chamar uma tool simples.
+ */
+export type EsforcoDeRaciocinioOpenRouter =
+  | 'none'
+  | 'minimal'
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'xhigh'
+  | 'max';
+
+const ESFORCOS_OPENROUTER: readonly EsforcoDeRaciocinioOpenRouter[] = [
+  'none',
+  'minimal',
+  'low',
+  'medium',
+  'high',
+  'xhigh',
+  'max',
+];
+
+export function esforcoDeRaciocinioOpenRouter(
+  valor: string | undefined,
+): EsforcoDeRaciocinioOpenRouter | null {
+  const v = valor?.trim().toLowerCase();
+  if (!v) return null;
+  if (!(ESFORCOS_OPENROUTER as readonly string[]).includes(v)) {
+    throw new Error(
+      'OPENROUTER_REASONING_EFFORT inválido — use ' + ESFORCOS_OPENROUTER.join(', ') + ' (ou deixe vazio)',
+    );
+  }
+  return v as EsforcoDeRaciocinioOpenRouter;
+}
+
+function comEsforcoDeRaciocinioOpenRouter(
+  inner: typeof fetch,
+  esforco: EsforcoDeRaciocinioOpenRouter,
+): typeof fetch {
+  return (input, init) => {
+    const corpo = init?.body;
+    if (typeof corpo === 'string') {
+      try {
+        const json = JSON.parse(corpo) as Record<string, unknown>;
+        return inner(input, {
+          ...init,
+          body: JSON.stringify({ ...json, reasoning_effort: esforco }),
+        });
+      } catch {
+        // Corpo não-JSON: tuning nunca pode derrubar a chamada.
+      }
+    }
+    return inner(input, init);
+  };
+}
+
+/**
  * Providers reais do lançamento. Sonnet (Anthropic) é o default RECOMENDADO —
  * recomendação vive em .env.example/docs; o id do modelo é sempre config da org.
  *
@@ -231,6 +290,8 @@ export function createDefaultRegistry(opts?: {
   deepseekThinking?: RaciocinioDeepseek;
   /** Knob OPENAI_REASONING_EFFORT; ausente = lido do ambiente. `null` = não injeta. */
   openaiReasoningEffort?: EsforcoDeRaciocinioOpenAI | null;
+  /** Knob OPENROUTER_REASONING_EFFORT; null/ausente preserva o comportamento do router. */
+  openrouterReasoningEffort?: EsforcoDeRaciocinioOpenRouter | null;
 }): ProviderRegistry {
   const extra = opts?.allowedHosts ?? [];
   const esforcoOpenAI =
@@ -264,11 +325,16 @@ export function createDefaultRegistry(opts?: {
      */
     openrouter: (apiKey, modelId, baseUrl) => {
       const endpoint = baseUrl ?? OPENROUTER_ENDPOINT;
+      const contido = contain(endpoint);
+      const fetchFinal =
+        opts?.openrouterReasoningEffort
+          ? comEsforcoDeRaciocinioOpenRouter(contido, opts.openrouterReasoningEffort)
+          : contido;
       const provider = createOpenAI({
         apiKey,
         baseURL: endpoint,
         headers: cabecalhosDeAtribuicaoOpenRouter(),
-        fetch: contain(endpoint),
+        fetch: fetchFinal,
       });
       // Chat Completions, NÃO Responses: a OpenRouter fala a API da OpenAI
       // (chat/completions). O `createOpenAI()(modelId)` desta versão do SDK usa

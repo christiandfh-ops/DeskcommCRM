@@ -172,6 +172,9 @@ const envSchema = z.object({
   // gpt-6*). Opcional; validado AQUI, pela mesma função que o lê em runtime, para
   // um erro de grafia derrubar o boot com o nome da variável — e não cada turno
   // do agente, que é onde `createDefaultRegistry` o lê.
+  OPENROUTER_REASONING_EFFORT: z
+    .enum(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
+    .optional(),
   OPENAI_REASONING_EFFORT: z
     .string()
     .optional()

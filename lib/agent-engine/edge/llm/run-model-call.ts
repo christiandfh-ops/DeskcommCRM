@@ -537,7 +537,12 @@ export function cacheDaCauda(
 export async function runModelCall(db: pg.Pool, cfg: LlmEdgeConfig, input: RunModelCallInput, deps: RunModelCallDeps = {}) {
   // O knob do raciocínio da DeepSeek entra pela fábrica: `deepseekThinking` só é
   // lido pela fábrica `deepseek`, então os outros provedores não têm como mudar.
-  const registry = deps.registry ?? createDefaultRegistry({ deepseekThinking: cfg.deepseekThinking });
+  const registry =
+    deps.registry ??
+    createDefaultRegistry({
+      deepseekThinking: cfg.deepseekThinking,
+      openrouterReasoningEffort: cfg.openrouterReasoningEffort ?? null,
+    });
   const purpose = input.purpose ?? 'agent_turn';
 
   // A config da org é lida ANTES da decisão porque o resolvedor precisa dela
@@ -757,6 +762,19 @@ export async function runModelCall(db: pg.Pool, cfg: LlmEdgeConfig, input: RunMo
     cacheReadTokens: result.usage.inputTokenDetails.cacheReadTokens ?? 0,
     cacheWriteTokens: result.usage.inputTokenDetails.cacheWriteTokens ?? 0,
   };
+  // Observabilidade sem conteúdo/PII: mostra quantas vezes o contexto foi
+  // reenviado ao provedor e quais tools causaram continuidade do loop.
+  deps.log?.info('llm: etapas concluídas', {
+    organization_id: input.tenantId,
+    purpose,
+    steps_count: result.steps.length,
+    steps: result.steps.map((step, index) => ({
+      step: index + 1,
+      input_tokens: step.usage?.inputTokens ?? 0,
+      output_tokens: step.usage?.outputTokens ?? 0,
+      tool_names: (step.toolCalls ?? []).map((call) => String(call.toolName ?? 'unknown')),
+    })),
+  });
   // O TTL é o MESMO que gravou o prefixo estável acima: a gravação de cache custa
   // 1.25× a entrada em 5m e 2× em 1h, e supor a doutrina superfaturaria 60% da
   // parcela de cache write em quem usa o knob.

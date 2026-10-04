@@ -300,7 +300,11 @@ export function TestPanel({ agent, draft, published, readOnly }: Props) {
             </div>
 
             <RunTrace
-              toolCalls={result.tool_calls}
+              // No core compartilhado, tool_calls do dry-run ainda representa
+              // propostas de escrita; elas já aparecem abaixo com o schema
+              // correto (tool/arguments). Passá-las ao RunTrace, que espera
+              // tool_name/args/result, criava #1/#2 "(sem nome)" duplicados.
+              toolCalls={result.candidates ? [] : result.tool_calls}
               finalText={result.final_text ?? null}
               emptyMessage={t("Sem tool calls (resposta direta do LLM).")}
             />
