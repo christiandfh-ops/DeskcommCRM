@@ -2607,7 +2607,7 @@ async function executarTurnoDoAgente(
         classifyPromise(
           pool,
           deps.llmCfg,
-          { tenantId, leadId: leadId || null, jobId: job?.id },
+          { tenantId, leadId: leadId || null, jobId: job?.id, previewRunId: preview?.runId },
           {
             candidate,
             commercialEvidence: evidenciasComerciais.ler(),
@@ -4083,7 +4083,7 @@ async function executarTurnoDoAgente(
       });
     };
     const [stageResultado, jailbreakVerdict, manipulacaoDoJev] = await Promise.all([
-      deps.knobs.stageClassifier !== undefined
+      deps.knobs.stageClassifier !== undefined && !preview
         ? classifyStage(
             pool,
             deps.llmCfg,
@@ -4104,7 +4104,7 @@ async function executarTurnoDoAgente(
         ? classifyJailbreak(
             pool,
             deps.llmCfg,
-            { tenantId, leadId: leadId || null, jobId: job?.id },
+            { tenantId, leadId: leadId || null, jobId: job?.id, previewRunId: preview?.runId },
             {
               message: skillSignal,
               // Knob ausente + organização ligando = roda com o modelo padrão dela,
@@ -4257,6 +4257,7 @@ async function executarTurnoDoAgente(
         tenantId,
         leadId: leadId || null,
         jobId: job?.id,
+        previewRunId: preview?.runId,
         // De quem é esta execução. Vai para `llm_calls.agent_id` e é o que permite
         // a aba "Execuções" da tela do agente mostrar o que ELE fez — antes ela
         // lia `ai_agent_runs`, tabela que motor nenhum vivo escreve, e dizia

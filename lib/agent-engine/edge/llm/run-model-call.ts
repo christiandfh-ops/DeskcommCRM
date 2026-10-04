@@ -182,6 +182,8 @@ export interface RunModelCallInput {
   tenantId: string;
   leadId?: string | null;
   jobId?: string | null;
+  /** Execução de preview/dry-run que originou a chamada; null em produção real. */
+  previewRunId?: string | null;
   variantId?: string | null;
   /**
    * De QUEM é esta execução — `ai_agents.id` do agente publicado que está no
@@ -762,15 +764,16 @@ export async function runModelCall(db: pg.Pool, cfg: LlmEdgeConfig, input: RunMo
 
   const { rows } = await db.query<{ id: string }>(
     `insert into llm_calls
-       (organization_id, contact_id, job_id, variant_id, purpose, provider, model,
+       (organization_id, contact_id, job_id, preview_run_id, variant_id, purpose, provider, model,
         input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_cents, latency_ms,
         status, origem_da_escolha, agent_id)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'ok', $14, $15)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, 'ok', $15, $16)
      returning id`,
     [
       input.tenantId,
       input.leadId ?? null,
       input.jobId ?? null,
+      input.previewRunId ?? null,
       input.variantId ?? null,
       purpose,
       config.provider,
@@ -949,14 +952,15 @@ async function registrarFalha(
   const { error_code, error_message, http_status } = normalizarErro(d.erro);
   await db.query(
     `insert into llm_calls
-       (organization_id, contact_id, job_id, variant_id, purpose, provider, model,
+       (organization_id, contact_id, job_id, preview_run_id, variant_id, purpose, provider, model,
         input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, cost_cents, latency_ms,
         status, error_code, error_message, http_status, origem_da_escolha, agent_id)
-     values ($1, $2, $3, $4, $5, $6, $7, 0, 0, 0, 0, null, $8, 'erro', $9, $10, $11, $12, $13)`,
+     values ($1, $2, $3, $4, $5, $6, $7, $8, 0, 0, 0, 0, null, $9, 'erro', $10, $11, $12, $13, $14)`,
     [
       d.input.tenantId,
       d.input.leadId ?? null,
       d.input.jobId ?? null,
+      d.input.previewRunId ?? null,
       d.input.variantId ?? null,
       d.purpose,
       d.provider,

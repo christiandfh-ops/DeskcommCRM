@@ -110,7 +110,7 @@ export function parseStageSuggestion(text: string): LeadStage | null {
 export async function classifyStage(
   db: pg.Pool,
   cfg: LlmEdgeConfig,
-  ids: { tenantId: string; leadId: string | null; jobId?: string },
+  ids: { tenantId: string; leadId: string | null; jobId?: string; previewRunId?: string },
   args: {
     context: LeadContext;
     currentStage: LeadStage;
@@ -128,6 +128,7 @@ export async function classifyStage(
         tenantId: ids.tenantId,
         leadId: ids.leadId,
         ...(ids.jobId !== undefined ? { jobId: ids.jobId } : {}),
+        ...(ids.previewRunId !== undefined ? { previewRunId: ids.previewRunId } : {}),
         purpose: 'stage_classifier',
         // O classificador só precisa devolver UM nome de estágio. Roteadores
         // gratuitos podem escolher modelos de raciocínio e consumir milhares de

@@ -6501,6 +6501,7 @@ create table if not exists llm_calls (
   organization_id uuid not null references organizations(id) on delete cascade,
   contact_id uuid references contacts(id) on delete set null,
   job_id uuid references job_queue(id) on delete set null,
+  preview_run_id uuid references ai_agent_runs(id) on delete set null,
   variant_id uuid,                       -- experiment_variants (flywheel); nasce p/ atribuição
   purpose text not null default 'agent_turn',  -- 'agent_turn' | 'classifier' | 'compaction' | 'connection_test'
   provider text not null,
@@ -6514,6 +6515,8 @@ create table if not exists llm_calls (
   created_at timestamptz not null default now()
 );
 create index if not exists idx_llm_calls_org_time on llm_calls (organization_id, created_at);
+create index if not exists idx_llm_calls_preview_run_id
+  on llm_calls (preview_run_id) where preview_run_id is not null;
 
 -- ============================================================================
 -- 0007 — artefato durável do loop do agente: cada run fecha escrevendo um

@@ -122,7 +122,7 @@ export function parsePromiseClassification(text: string, log?: Logger): PromiseC
 export async function classifyPromise(
   db: pg.Pool,
   cfg: LlmEdgeConfig,
-  ids: { tenantId: string; leadId?: string | null; jobId?: string },
+  ids: { tenantId: string; leadId?: string | null; jobId?: string; previewRunId?: string },
   args: {
     candidate: string;
     model?: string;
@@ -139,6 +139,7 @@ export async function classifyPromise(
       tenantId: ids.tenantId,
       ...(ids.leadId != null ? { leadId: ids.leadId } : {}),
       ...(ids.jobId !== undefined ? { jobId: ids.jobId } : {}),
+      ...(ids.previewRunId !== undefined ? { previewRunId: ids.previewRunId } : {}),
       purpose: "promise_semantic",
       // O retorno é um JSON pequeno (boolean + trecho suspeito). Um teto explícito
       // evita raciocínio verboso dos modelos roteados sem sacrificar a frase que

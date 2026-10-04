@@ -125,7 +125,7 @@ export function parseJailbreakClassification(text: string): JailbreakClassificat
 export async function classifyJailbreak(
   db: pg.Pool,
   cfg: LlmEdgeConfig,
-  ids: { tenantId: string; leadId?: string | null; jobId?: string },
+  ids: { tenantId: string; leadId?: string | null; jobId?: string; previewRunId?: string },
   args: { message: string; model?: string; llmOverride?: LlmResolveOverride },
   deps: { registry?: ProviderRegistry; log: Logger },
 ): Promise<JailbreakClassification> {
@@ -138,6 +138,7 @@ export async function classifyJailbreak(
         tenantId: ids.tenantId,
         ...(ids.leadId != null ? { leadId: ids.leadId } : {}),
         ...(ids.jobId !== undefined ? { jobId: ids.jobId } : {}),
+        ...(ids.previewRunId !== undefined ? { previewRunId: ids.previewRunId } : {}),
         purpose: 'jailbreak_detect',
         // Veredito curto e estruturado: impede que um modelo de raciocínio do
         // roteador gratuito transforme um classificador auxiliar em uma resposta

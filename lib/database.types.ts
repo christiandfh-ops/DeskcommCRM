@@ -7294,6 +7294,7 @@ export type Database = {
           organization_id: string
           origem_da_escolha: string | null
           output_tokens: number
+          preview_run_id: string | null
           provider: string
           purpose: string
           status: string
@@ -7318,6 +7319,7 @@ export type Database = {
           organization_id: string
           origem_da_escolha?: string | null
           output_tokens?: number
+          preview_run_id?: string | null
           provider: string
           purpose?: string
           status?: string
@@ -7342,6 +7344,7 @@ export type Database = {
           organization_id?: string
           origem_da_escolha?: string | null
           output_tokens?: number
+          preview_run_id?: string | null
           provider?: string
           purpose?: string
           status?: string
@@ -7367,6 +7370,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "job_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_calls_preview_run_id_fkey"
+            columns: ["preview_run_id"]
+            isOneToOne: false
+            referencedRelation: "ai_agent_runs"
             referencedColumns: ["id"]
           },
           {
