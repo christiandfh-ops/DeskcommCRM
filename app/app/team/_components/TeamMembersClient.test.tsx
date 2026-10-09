@@ -146,3 +146,65 @@ describe("TeamMembersClient — seletor de papel (G2-02)", () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 });
+
+describe("TeamMembersClient — recuperação de acesso", () => {
+  it("administrador envia a recuperação somente após confirmação", async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { user_id: AGENT_ID, requested: true },
+    });
+    const user = userEvent.setup();
+    renderClient();
+    expect(await screen.findByText("agente@example.com")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Ações" }));
+    await user.click(
+      await screen.findByRole("menuitem", {
+        name: "Enviar link para redefinir senha",
+      }),
+    );
+    expect(await screen.findByText(/A pessoa escolherá a própria senha/)).toBeInTheDocument();
+    expect(apiClient.post).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Enviar recuperação" }));
+    await waitFor(() =>
+      expect(apiClient.post).toHaveBeenCalledWith(
+        `/api/v1/team/${AGENT_ID}/password-reset/request`,
+        {},
+      ),
+    );
+    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+  });
+
+  it("sem permissão de admin não oferece redefinição", async () => {
+    renderClient({ canManage: false });
+    expect(await screen.findByText("agente@example.com")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ações" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Enviar link para redefinir senha")).not.toBeInTheDocument();
+  });
+
+  it("falha no envio → toast de erro, sem sucesso, e o diálogo permanece aberto", async () => {
+    vi.mocked(apiClient.post).mockRejectedValue(
+      new ApiError(
+        503,
+        "internal_error",
+        undefined,
+        "req-1",
+        "Não foi possível enviar a recuperação agora. Verifique a configuração de e-mail.",
+      ),
+    );
+    const user = userEvent.setup();
+    renderClient();
+    expect(await screen.findByText("agente@example.com")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Ações" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Enviar link para redefinir senha" }),
+    );
+    await user.click(screen.getByRole("button", { name: "Enviar recuperação" }));
+
+    // Honesty: falha do provedor não pode virar "enviado".
+    await waitFor(() => expect(toast.error).toHaveBeenCalled());
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+});

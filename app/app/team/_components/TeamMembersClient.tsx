@@ -3,6 +3,8 @@
 import { MemberInterfaceDialog } from "@/components/team/MemberInterfaceDialog";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useState } from "react";
+import { apiClient } from "@/lib/api/client";
+import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { toast } from "sonner";
 
 import { useT } from "@/hooks/i18n/useT";
@@ -59,6 +61,8 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
 
   const [interfaceMember, setInterfaceMember] = useState<TeamMember | null>(null);
   const [revokeDialog, setRevokeDialog] = useState<TeamMember | null>(null);
+  const [resetDialog, setResetDialog] = useState<TeamMember | null>(null);
+  const [sendingReset, setSendingReset] = useState(false);
 
   if (isLoading) {
     return <p className="text-sm text-muted-foreground">{t("Carregando…")}</p>;
@@ -182,6 +186,11 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
                             novo — caminho longo e cheio de beco, medido com
                             uma pessoa de verdade presa nele em 2026-09-10.
                           */}
+                          {!m.revoked_at && m.accepted_at && m.email ? (
+                            <DropdownMenuItem onClick={() => setResetDialog(m)}>
+                              {t("Enviar link para redefinir senha")}
+                            </DropdownMenuItem>
+                          ) : null}
                           {m.revoked_at ? (
                             <DropdownMenuItem
                               disabled={reativar.isPending}
@@ -217,6 +226,51 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
           onClose={() => setInterfaceMember(null)}
         />
       )}
+      <Dialog
+        open={!!resetDialog}
+        onOpenChange={(o) => !o && !sendingReset && setResetDialog(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("Redefinir senha")}</DialogTitle>
+            <DialogDescription>
+              {t("Enviar um link seguro de recuperação para")} <strong>{resetDialog?.email}</strong>
+              ?{" "}
+              {t(
+                "A pessoa escolherá a própria senha. O administrador não vê nem recebe a senha, inclusive quando o usuário participa de outras empresas.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" disabled={sendingReset} onClick={() => setResetDialog(null)}>
+              {t("Cancelar")}
+            </Button>
+            <Button
+              disabled={sendingReset}
+              onClick={async () => {
+                if (!resetDialog) return;
+                setSendingReset(true);
+                try {
+                  await apiClient.post(
+                    `/api/v1/team/${resetDialog.user_id}/password-reset/request`,
+                    {},
+                  );
+                  toast.success(
+                    t("Pedido enviado. O usuário receberá um e-mail para escolher a nova senha."),
+                  );
+                  setResetDialog(null);
+                } catch (error) {
+                  showApiError(error);
+                } finally {
+                  setSendingReset(false);
+                }
+              }}
+            >
+              {sendingReset ? t("Enviando…") : t("Enviar recuperação")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog open={!!revokeDialog} onOpenChange={(o) => !o && setRevokeDialog(null)}>
         <DialogContent>
           <DialogHeader>

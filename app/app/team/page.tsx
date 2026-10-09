@@ -12,7 +12,7 @@ import { AttendantsClient } from "./_components/AttendantsClient";
 import { fusoUtilizavel } from "@/lib/tempo/fusos";
 
 export const dynamic = "force-dynamic";
-export const metadata: Metadata = { title: "Equipe" };
+export const metadata: Metadata = { title: "Usuários" };
 
 /**
  * As duas abas são endereçáveis, e isso não é conveniência.
@@ -50,9 +50,9 @@ export default async function TeamPage({
     <div className="flex h-full flex-col gap-6 p-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Equipe")}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("Usuários")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("Gestão de membros, roles e atendimento do tenant.")}
+            {t("Gerencie usuários, papéis, convites, senhas e atendimento da sua empresa.")}
           </p>
         </div>
         {isAdmin ? (
@@ -64,7 +64,7 @@ export default async function TeamPage({
 
       <Tabs defaultValue={abaInicial} className="flex flex-1 flex-col">
         <TabsList>
-          <TabsTrigger value="members">{t("Membros")}</TabsTrigger>
+          <TabsTrigger value="members">{t("Usuários")}</TabsTrigger>
           <TabsTrigger value="attendants">{t("Atendimento")}</TabsTrigger>
         </TabsList>
         <TabsContent value="members" className="mt-4 flex flex-col gap-8">
@@ -79,7 +79,10 @@ export default async function TeamPage({
         </TabsContent>
         <TabsContent value="attendants" className="mt-4">
           {isManager ? (
-            <AttendantsClient canManage={isManager} organizationTimezone={fusoUtilizavel(activeOrg?.timezone)} />
+            <AttendantsClient
+              canManage={isManager}
+              organizationTimezone={fusoUtilizavel(activeOrg?.timezone)}
+            />
           ) : (
             <p className="text-sm text-muted-foreground">
               {/*
