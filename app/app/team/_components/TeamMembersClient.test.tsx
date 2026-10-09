@@ -156,12 +156,7 @@ describe("TeamMembersClient — recuperação de acesso", () => {
     renderClient();
     expect(await screen.findByText("agente@example.com")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Ações" }));
-    await user.click(
-      await screen.findByRole("menuitem", {
-        name: "Enviar link para redefinir senha",
-      }),
-    );
+    await user.click(screen.getByRole("button", { name: "Redefinir senha" }));
     expect(await screen.findByText(/A pessoa escolherá a própria senha/)).toBeInTheDocument();
     expect(apiClient.post).not.toHaveBeenCalled();
 
@@ -179,7 +174,7 @@ describe("TeamMembersClient — recuperação de acesso", () => {
     renderClient({ canManage: false });
     expect(await screen.findByText("agente@example.com")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Ações" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Enviar link para redefinir senha")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Redefinir senha" })).not.toBeInTheDocument();
   });
 
   it("falha no envio → toast de erro, sem sucesso, e o diálogo permanece aberto", async () => {
@@ -196,15 +191,24 @@ describe("TeamMembersClient — recuperação de acesso", () => {
     renderClient();
     expect(await screen.findByText("agente@example.com")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Ações" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "Enviar link para redefinir senha" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Redefinir senha" }));
     await user.click(screen.getByRole("button", { name: "Enviar recuperação" }));
 
     // Honesty: falha do provedor não pode virar "enviado".
     await waitFor(() => expect(toast.error).toHaveBeenCalled());
     expect(toast.success).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+});
+
+describe("TeamMembersClient — novo painel administrativo", () => {
+  it("mostra Minha senha para o próprio admin e Redefinir senha diretamente para outro membro", async () => {
+    renderClient();
+    expect(await screen.findByText("agente@example.com")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Minha senha" })).toHaveAttribute(
+      "href",
+      "/login/forgot",
+    );
+    expect(screen.getByRole("button", { name: "Redefinir senha" })).toBeInTheDocument();
   });
 });

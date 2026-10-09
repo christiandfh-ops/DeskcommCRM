@@ -3,6 +3,7 @@
 import { MemberInterfaceDialog } from "@/components/team/MemberInterfaceDialog";
 import { useTagDeIdioma } from "@/hooks/i18n/useLocaleDeData";
 import { useState } from "react";
+import Link from "next/link";
 import { apiClient } from "@/lib/api/client";
 import { showApiError } from "@/components/feedback/ApiErrorToast";
 import { toast } from "sonner";
@@ -77,16 +78,16 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
 
   return (
     <>
-      <div className="rounded-md border">
+      <div className="overflow-x-auto rounded-xl border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{t("Membro")}</TableHead>
-              <TableHead>Role</TableHead>
+              <TableHead>{t("Nome / login")}</TableHead>
+              <TableHead>{t("Perfil")}</TableHead>
               <TableHead>{t("Interface")}</TableHead>
               <TableHead>{t("Status")}</TableHead>
               <TableHead>{t("Última atividade")}</TableHead>
-              {canManage ? <TableHead className="w-[80px]" /> : null}
+              {canManage ? <TableHead className="min-w-[195px]">{t("Ações")}</TableHead> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -172,44 +173,41 @@ export function TeamMembersClient({ currentUserId, canManage }: Props) {
                 {canManage ? (
                   <TableCell>
                     {m.user_id !== currentUserId ? (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" aria-label={t("Ações")}>
-                            <DotsThree size={20} />
+                      <div className="flex items-center gap-2">
+                        {!m.revoked_at && m.accepted_at && m.email ? (
+                          <Button variant="outline" size="sm" onClick={() => setResetDialog(m)}>
+                            {t("Redefinir senha")}
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {/*
-                            Revogar e reativar são exclusivos: oferecer os dois
-                            na mesma linha convidaria ao clique errado. Sem o
-                            ramo de reativar, a única volta era emitir convite
-                            novo — caminho longo e cheio de beco, medido com
-                            uma pessoa de verdade presa nele em 2026-09-10.
-                          */}
-                          {!m.revoked_at && m.accepted_at && m.email ? (
-                            <DropdownMenuItem onClick={() => setResetDialog(m)}>
-                              {t("Enviar link para redefinir senha")}
-                            </DropdownMenuItem>
-                          ) : null}
-                          {m.revoked_at ? (
-                            <DropdownMenuItem
-                              disabled={reativar.isPending}
-                              onClick={() => void reativar.mutateAsync(m.user_id)}
-                            >
-                              {t("Devolver acesso")}
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive"
-                              onClick={() => setRevokeDialog(m)}
-                            >
-                              {t("Revogar acesso")}
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        ) : null}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" aria-label={t("Ações")}>
+                              <DotsThree size={20} />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {m.revoked_at ? (
+                              <DropdownMenuItem
+                                disabled={reativar.isPending}
+                                onClick={() => void reativar.mutateAsync(m.user_id)}
+                              >
+                                {t("Devolver acesso")}
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => setRevokeDialog(m)}
+                              >
+                                {t("Revogar acesso")}
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     ) : (
-                      <span className="text-xs text-muted-foreground">{t("você")}</span>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href="/login/forgot">{t("Minha senha")}</Link>
+                      </Button>
                     )}
                   </TableCell>
                 ) : null}

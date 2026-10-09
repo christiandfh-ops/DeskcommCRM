@@ -7,6 +7,8 @@ import { ROLE_RANK } from "@/lib/auth/types";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TeamMembersClient } from "./_components/TeamMembersClient";
+import { TeamAccessOverview } from "./_components/TeamAccessOverview";
+import { QuickInvitePanel } from "./_components/QuickInvitePanel";
 import { TeamInvitesClient } from "./_components/TeamInvitesClient";
 import { AttendantsClient } from "./_components/AttendantsClient";
 import { fusoUtilizavel } from "@/lib/tempo/fusos";
@@ -50,14 +52,17 @@ export default async function TeamPage({
     <div className="flex h-full flex-col gap-6 p-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-tight">{t("Usuários")}</h1>
+          <p className="mb-2 text-xs font-semibold tracking-wider text-primary uppercase">
+            {t("Administração")}
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">{t("Gestão de usuários")}</h1>
           <p className="text-sm text-muted-foreground">
-            {t("Gerencie usuários, papéis, convites, senhas e atendimento da sua empresa.")}
+            {t("Crie acessos, ajuste permissões e gerencie convites e recuperação de senha.")}
           </p>
         </div>
         {isAdmin ? (
           <Button asChild className="shrink-0">
-            <Link href="/app/team/invite">{t("Convidar membros")}</Link>
+            <Link href="/app/team/invite">{t("Convites avançados")}</Link>
           </Button>
         ) : null}
       </header>
@@ -67,14 +72,20 @@ export default async function TeamPage({
           <TabsTrigger value="members">{t("Usuários")}</TabsTrigger>
           <TabsTrigger value="attendants">{t("Atendimento")}</TabsTrigger>
         </TabsList>
-        <TabsContent value="members" className="mt-4 flex flex-col gap-8">
-          <TeamMembersClient currentUserId={user.id} canManage={isAdmin} />
-          {/*
-            Convites pendentes vivem AQUI, na mesma aba de quem já entrou —
-            antes só apareciam numa lista efêmera dentro do modal "Convidar
-            membros", que sumia ao fechar. Manager+ vê; só admin reenvia/revoga
-            (as rotas são admin-only). Ver `docs/testing/user-journey-map.md`.
-          */}
+        <TabsContent value="members" className="mt-4 flex flex-col gap-6">
+          {isManager ? <TeamAccessOverview /> : null}
+          <div className={isAdmin ? "grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]" : ""}>
+            <div className="flex min-w-0 flex-col gap-5">
+              <div className="space-y-1">
+                <h2 className="text-lg font-semibold">{t("Usuários cadastrados")}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {t("Altere o perfil, gerencie o acesso e envie links de recuperação.")}
+                </p>
+              </div>
+              <TeamMembersClient currentUserId={user.id} canManage={isAdmin} />
+            </div>
+            {isAdmin ? <QuickInvitePanel /> : null}
+          </div>
           {isManager ? <TeamInvitesClient canManage={isAdmin} /> : null}
         </TabsContent>
         <TabsContent value="attendants" className="mt-4">
